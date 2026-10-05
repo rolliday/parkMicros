@@ -1,4 +1,4 @@
-/* Usei a pinagem coom base no lab 6 
+/* Usei a pinagem com base no lab 6 
     Colunas (entradas com pull-up):
       Coluna 0 -> PH3 (pino 6)
       Coluna 1 -> PH4 (pino 7)
