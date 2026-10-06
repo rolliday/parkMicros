@@ -29,24 +29,24 @@ int quantos_bissextos(int a) {
 }
 
 // calcula qual dia da semana eh a partir do 01/01/2000 (sabado)
-int dia_da_semana(int dia1, int mes1, int ano1) {
-  int dia0 = 1, mes0 = 1, ano0 = 2000;
+int dia_da_semana(int dia_final, int mes_final, int ano_final, int flag_bissexto) {
+  int dia_inicial = 1, mes_inicial = 1, ano_inicial = 2000;
   int meses[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
   int a = 0;
 
   // calcula quantos dias tiveram no ano até o mes fornecido
-  for (int i = 0; i < mes1 - 1; i++) {
+  for (int i = 0; i < mes_final - 1; i++) {
     a += meses[i];
   }
 
   // calcula quandos dias tiveram até o ano fornecido
-  a += (ano1 - ano0) * 365 + quantos_bissextos(ano1);
+  a += (ano_final - ano_inicial) * 365 + quantos_bissextos(ano_final);
 
   // calcula quantos dias tiveram até o dia fornecido
-  if (bissexto(ano1) && mes1 > 2) {
-    a += dia1;
+  if (flag_bissexto && mes_final > 2) {
+    a += dia_final;
   } else {
-    a += dia1 - 1;
+    a += dia_final - 1;
   }
 
   // calcula o dia da semana
@@ -57,7 +57,7 @@ int dia_da_semana(int dia1, int mes1, int ano1) {
 }
 
 // calcula qual dia do ano eh
-int dia_do_ano(int dia, int mes, int ano) {
+int dia_do_ano(int dia, int mes, int flag_bissexto) {
   int meses[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
   int a = 0;
 
@@ -67,7 +67,7 @@ int dia_do_ano(int dia, int mes, int ano) {
   }
 
   // calcula quantos dias tiveram até o dia fornecido
-  if (bissexto(ano) && mes > 2) {
+  if (flag_bissexto && mes > 2) {
     a += dia;
   } else {
     a += dia;
@@ -76,7 +76,7 @@ int dia_do_ano(int dia, int mes, int ano) {
   return a;
 }
 
-Carnaval calculo_carnaval(int dia_pascoa, int mes_pascoa, int dia_do_ano, int ano) {
+Carnaval calculo_carnaval(int dia_pascoa, int mes_pascoa, int dia_do_ano, int ano, int flag_bissexto) {
   Carnaval res;
   res.dia = 0, res.mes = 0;
   res.dia = dia_do_ano - 47;
@@ -89,7 +89,7 @@ Carnaval calculo_carnaval(int dia_pascoa, int mes_pascoa, int dia_do_ano, int an
     res.dia -= 59;
   }
 
-  if (bissexto(ano) && res.mes == 2) {
+  if (flag_bissexto && res.mes == 2) {
     res.dia++;
   }
 
@@ -97,7 +97,7 @@ Carnaval calculo_carnaval(int dia_pascoa, int mes_pascoa, int dia_do_ano, int an
 }
 
 // verifica se hoje eh pascoa ou nao (so eh valido para anos entre 1900 e 2099) - Formula de Gauss
-int pascoa(int dia, int mes, int ano) {
+int pascoa(int dia, int mes, int ano, int flag_bissexto) {
   int dia_pascoa = 0, mes_pascoa = 0;
   int x = 24, y = 5;
   int a = ano % 19, b = ano % 4, c = ano % 7;
@@ -112,7 +112,7 @@ int pascoa(int dia, int mes, int ano) {
     mes_pascoa = 3;
   }
   
-  Carnaval r = calculo_carnaval(dia_pascoa, mes_pascoa, dia_do_ano(dia_pascoa, mes_pascoa, ano), ano);
+  Carnaval r = calculo_carnaval(dia_pascoa, mes_pascoa, dia_do_ano(dia_pascoa, mes_pascoa, ano), ano, flag_bissexto);
   printf("Carnaval: %d/%d\n", r.dia, r.mes);
   return 0;
 }
@@ -146,8 +146,15 @@ int feriado(int dia, int mes) {
 
 int main() {
   int dia = 5, mes = 10, ano = 2026;
+  int flag_bissexto = 0;
 
-  int saida = pascoa(dia, mes, ano);
+  flag_bissexto = bissexto(ano);
+
+  int saida = pascoa(dia, mes, ano, flag_bissexto);
   printf("%d\n", saida);
   return 0;
 }
+
+// falta adicionar o calculo de Corpus Christi e as 2 exceções
+// adicionar testes
+// trocar int por ponteiros
