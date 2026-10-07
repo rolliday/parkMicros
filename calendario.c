@@ -1,46 +1,48 @@
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+// no Arduino usa o PROGMEM de verdade; no PC (para testar) finge que ele nao existe
+#ifdef __AVR__
+  #include <avr/pgmspace.h>
+#else
+  #define PROGMEM
+  #define pgm_read_byte(addr) (*(addr))
+#endif
+
+// dias de cada mes (ano nao bissexto), guardado so na flash
+const uint8_t meses[12] PROGMEM = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 typedef struct {
-  int dia;
-  int mes;
+  uint8_t dia;
+  uint8_t mes;
 } Feriado_dia_mes;
 
-// calcula se o ano é bissexto (1) ou não (0)
-int bissexto(int a) {
-  int b = a % 4;
-  if (b == 0) {
-    return 1;
-  } else {
-    return 0;
-  }
+// calcula se o ano é bissexto (true) ou não (false)
+// so eh valido para anos entre 1901 e 2099
+bool bissexto(uint16_t a) {
+  return (a % 4) == 0;
 }
 
-// calcula quantos anos bissextos existem entre 2000 e o ano fornecido usando a função bissexto(int a)
-int quantos_bissextos(int a) {
-  int b = 0;
-
-  for (int i = 2000; i < a; i++) {
-    if (bissexto(i)) {
-      b++;
-    }
-  }
-
-  return b;
+// calcula quantos anos bissextos existem entre 2000 (inclusive) e o ano fornecido (exclusive)
+// so eh valido para anos entre 2000 e 2099
+static uint8_t quantos_bissextos(uint16_t a) {
+  return (a - 2000 + 3) / 4;
 }
 
 // calcula qual dia da semana eh a partir do 01/01/2000 (sabado)
-int dia_da_semana(int dia_final, int mes_final, int ano_final, int flag_bissexto) {
-  int dia_inicial = 1, mes_inicial = 1, ano_inicial = 2000;
-  int meses[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  int a = 0;
+uint8_t dia_da_semana(uint8_t dia_final, uint8_t mes_final, uint16_t ano_final, bool flag_bissexto) {
+  const uint16_t ano_inicial = 2000;
+  // uint16_t: em 2099 o total chega a ~36500 dias, o que estoura um int de 16 bits (AVR)
+  uint16_t a = 0;
 
   // calcula quantos dias tiveram no ano até o mes fornecido
-  for (int i = 0; i < mes_final - 1; i++) {
-    a += meses[i];
+  for (uint8_t i = 0; i < mes_final - 1; i++) {
+    a += pgm_read_byte(&meses[i]);
   }
 
   // calcula quandos dias tiveram até o ano fornecido
-  a += (ano_final - ano_inicial) * 365 + quantos_bissextos(ano_final);
+  a += (uint16_t)(ano_final - ano_inicial) * 365u + quantos_bissextos(ano_final);
 
   // calcula quantos dias tiveram até o dia fornecido
   if (flag_bissexto && mes_final > 2) {
@@ -51,35 +53,29 @@ int dia_da_semana(int dia_final, int mes_final, int ano_final, int flag_bissexto
 
   // calcula o dia da semana
   // 0 = sabado, 1 = domingo, 2 = segunda-feira, 3 = terca-feira, 4 = quarta-feira, 5 = quinta-feira, 6 = sexta-feira
-  a = a % 7;
-
-  return a;
+  return a % 7;
 }
 
-// calcula qual dia do ano eh
-int dia_do_ano(int dia, int mes, int flag_bissexto) {
-  int meses[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  int a = 0;
+// calcula qual dia do ano eh (sem considerar o 29/02; a correcao do bissexto eh feita por quem chama)
+static uint16_t dia_do_ano(uint8_t dia, uint8_t mes) {
+  uint16_t a = 0;
 
   // calcula quantos dias tiveram no ano até o mes fornecido
-  for (int i = 0; i < mes - 1; i++) {
-    a += meses[i];
+  for (uint8_t i = 0; i < mes - 1; i++) {
+    a += pgm_read_byte(&meses[i]);
   }
 
   // calcula quantos dias tiveram até o dia fornecido
-  if (flag_bissexto && mes > 2) {
-    a += dia;
-  } else {
-    a += dia;
-  }
+  a += dia;
 
   return a;
 }
 
-Feriado_dia_mes calculo_carnaval(int dia_pascoa, int mes_pascoa, int dia_do_ano, int flag_bissexto) {
+static Feriado_dia_mes calculo_carnaval(uint16_t dia_do_ano_pascoa, bool flag_bissexto) {
   Feriado_dia_mes res;
-  res.dia = 0, res.mes = 0;
-  res.dia = dia_do_ano - 47;
+  res.mes = 0;
+  // pascoa cai entre 22/03 (dia 81) e 25/04 (dia 115), entao o resultado fica entre 34 e 68
+  res.dia = dia_do_ano_pascoa - 47;
 
   if (res.dia <= 59) {
     res.mes = 2;
@@ -96,9 +92,8 @@ Feriado_dia_mes calculo_carnaval(int dia_pascoa, int mes_pascoa, int dia_do_ano,
   return res;
 }
 
-Feriado_dia_mes calculo_corpus_christi(int dia_pascoa, int mes_pascoa, int ano) {
+static Feriado_dia_mes calculo_corpus_christi(uint8_t dia_pascoa, uint8_t mes_pascoa) {
   Feriado_dia_mes res;
-  res.dia = 0, res.mes = 0;
 
   if (dia_pascoa != 1) {
     res.mes = mes_pascoa + 2;
@@ -113,12 +108,12 @@ Feriado_dia_mes calculo_corpus_christi(int dia_pascoa, int mes_pascoa, int ano) 
 
 // verifica se hoje eh carnaval, quarta-feira de cinzas, sexta-feira santa ou nao 
 // so eh valido para anos entre 1900 e 2099 (Formula de Gauss)
-int pascoa(int dia, int mes, int ano, int flag_bissexto) {
-  int dia_pascoa = 0, mes_pascoa = 0;
-  int x = 24, y = 5;
-  int a = ano % 19, b = ano % 4, c = ano % 7;
-  int d = (19 * a + x) % 30;
-  int e = (2 * b + 4 * c + 6 * d + y) % 7;
+static bool pascoa(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
+  uint8_t dia_pascoa, mes_pascoa;
+  const uint8_t x = 24, y = 5;
+  uint8_t a = ano % 19, b = ano % 4, c = ano % 7;
+  uint8_t d = (19 * a + x) % 30;
+  uint8_t e = (2 * b + 4 * c + 6 * d + y) % 7;
 
   if (d + e > 9) {
     dia_pascoa = d + e - 9;
@@ -137,16 +132,16 @@ int pascoa(int dia, int mes, int ano, int flag_bissexto) {
   }
   
   // calculo para saber quando cai a terca-feira de carnaval
-  Feriado_dia_mes carnaval = calculo_carnaval(dia_pascoa, mes_pascoa, dia_do_ano(dia_pascoa, mes_pascoa, ano), flag_bissexto);
+  Feriado_dia_mes carnaval = calculo_carnaval(dia_do_ano(dia_pascoa, mes_pascoa), flag_bissexto);
 
   // calculo para saber quando cai a quarta-feira de cinzas
-  int quarta_cinzas = carnaval.dia + 1;
+  uint8_t quarta_cinzas = carnaval.dia + 1;
 
   // calculo para saber quando cai a sexta-feira santa
-  int sexta_santa = dia_pascoa - 2;
+  int8_t sexta_santa = dia_pascoa - 2;
 
   // calculo paara saber quando cai o Corpus Christi
-  Feriado_dia_mes corpus = calculo_corpus_christi(dia_pascoa, mes_pascoa, ano);
+  Feriado_dia_mes corpus = calculo_corpus_christi(dia_pascoa, mes_pascoa);
 
   if (dia == carnaval.dia && mes == carnaval.mes) {          // Carnaval
     return 1;
@@ -162,7 +157,7 @@ int pascoa(int dia, int mes, int ano, int flag_bissexto) {
 }
 
 // verifica se hoje eh feriado ou nao
-int feriado(int dia, int mes, int ano, int flag_bissexto) {
+bool feriado(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
   if (pascoa(dia, mes, ano, flag_bissexto)) { // Chamada para calcular os feriados dependentes da pascoa
     return 1;
   } else if (dia == 1 && mes == 1) {          // Ano Novo
@@ -189,15 +184,14 @@ int feriado(int dia, int mes, int ano, int flag_bissexto) {
 }
 
 int main() {
-  int dia = 3, mes = 3, ano = 2076;
-  int flag_bissexto = 0;
+  uint8_t dia = 3, mes = 3;
+  uint16_t ano = 2076;
+  bool flag_bissexto = bissexto(ano);
 
-  flag_bissexto = bissexto(ano);
-
-  int saida = feriado(dia, mes, ano, flag_bissexto);
+  bool saida = feriado(dia, mes, ano, flag_bissexto);
   printf("%d\n", saida);
 
-  int dia_semana = dia_da_semana(dia, mes, ano, flag_bissexto);
+  uint8_t dia_semana = dia_da_semana(dia, mes, ano, flag_bissexto);
 
   switch (dia_semana) {
     case 0:
@@ -226,4 +220,3 @@ int main() {
 }
 
 // adicionar testes
-// trocar int por ponteiros
