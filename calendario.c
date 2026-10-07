@@ -135,23 +135,38 @@ static bool pascoa(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
   Feriado_dia_mes carnaval = calculo_carnaval(dia_do_ano(dia_pascoa, mes_pascoa), flag_bissexto);
 
   // calculo para saber quando cai a quarta-feira de cinzas
-  uint8_t quarta_cinzas = carnaval.dia + 1;
+  Feriado_dia_mes quarta_cinzas = carnaval;
+  quarta_cinzas.dia++;
+
+  // se o carnaval cai no ultimo dia de fevereiro, a quarta-feira de cinzas eh 01/03
+  if (quarta_cinzas.mes == 2 && quarta_cinzas.dia > 28 + flag_bissexto) {
+    quarta_cinzas.dia = 1;
+    quarta_cinzas.mes = 3;
+  }
 
   // calculo para saber quando cai a sexta-feira santa
-  int8_t sexta_santa = dia_pascoa - 2;
+  Feriado_dia_mes sexta_santa;
+
+  if (dia_pascoa > 2) {
+    sexta_santa.dia = dia_pascoa - 2;
+    sexta_santa.mes = mes_pascoa;
+  } else { // pascoa em 01/04 ou 02/04: sexta-feira santa cai em 30/03 ou 31/03
+    sexta_santa.dia = dia_pascoa + 29;
+    sexta_santa.mes = 3;
+  }
 
   // calculo paara saber quando cai o Corpus Christi
   Feriado_dia_mes corpus = calculo_corpus_christi(dia_pascoa, mes_pascoa);
 
-  if (dia == carnaval.dia && mes == carnaval.mes) {          // Carnaval
+  if (dia == carnaval.dia && mes == carnaval.mes) {                   // Carnaval
     return 1;
-  } else if (dia == quarta_cinzas && mes == carnaval.mes) {  // Quarta-feira de Cinzas
+  } else if (dia == quarta_cinzas.dia && mes == quarta_cinzas.mes) {  // Quarta-feira de Cinzas
     return 1;
-  } else if (dia == sexta_santa && mes == mes_pascoa) {      // Sexta-feira Santa
+  } else if (dia == sexta_santa.dia && mes == sexta_santa.mes) {      // Sexta-feira Santa
     return 1;
-  } else if (dia == corpus.dia && mes == corpus.mes) {       // Corpus Christi
+  } else if (dia == corpus.dia && mes == corpus.mes) {                // Corpus Christi
     return 1;
-  } else {                                                   // Nenhum feriado
+  } else {                                                            // Nenhum feriado
     return 0;
   }
 }
