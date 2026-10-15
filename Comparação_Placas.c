@@ -38,3 +38,23 @@ int Placa_Cartao_Virtual (const char *Placa)
 	}
 	return -1; 	// pro retorno ser invalido e saber que o cartão não ta na lista 
 }
+
+//como o valor muda, ele fica fora da função e usei QTD_PLACAS pq o numero é igual
+unsigned char saldo_cartao_virtual[QTD_PLACAS] = {
+	50,
+	20,
+	30,
+	60,
+	20 };
+
+int Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado)
+{
+	if (pos >= QTD_PLACAS){
+		return 0;
+	}
+	if (saldo_cartao_virtual[pos] < valor_cobrado){
+		return 0;
+	}
+	saldo_cartao_virtual[pos] -= valor;
+	return 1;
+}
