@@ -33,7 +33,7 @@ int Placa_Cartao_Virtual (const char *Placa)
 
 	for (int i = 0; i < QTD_PLACAS; i++)
 	{
-		if (strncmp(Placa, lista_cartao_virtual[i], TAM_PLACA) == 0)   //strncmp pois é um testo pré fixado 
+		if (strncmp(Placa, lista_cartao_virtual[i], TAM_PLACA) == 0) 
 			return i; 	//pra retornar a posição do cartçao que tem que ser cobrado 
 	}
 	return -1; 	// pro retorno ser invalido e saber que o cartão não ta na lista 
