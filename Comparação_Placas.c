@@ -17,9 +17,9 @@ int Placa_Especial(const char *Placa)
 	for (int i = 0; i < QTD_PLACAS; i++)
 	{
 		if (strncmp(Placa, lista_placas_especiais[i], TAM_PLACA) == 0) 
-			return 1;
+			return 1; 	//retorna que a pessoa é uma pessoa prioritária 
 	}
-	return 0;
+	return 0;	// retorna que a pss não é da lista de prioritária 
 }
 
 int Placa_Cartao_Virtual (const char *Placa)
