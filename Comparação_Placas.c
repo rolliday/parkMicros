@@ -66,7 +66,7 @@ indice_cartao = Placa_Cartao_Virtual(Placa);
 
 if (indice_cartao != -1)
 {
-	Desconta_Saldo_Cartao_Virtual(indice, valor_a_pagar); 
+	Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar); 
 }
 
 
