@@ -59,7 +59,7 @@ int Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado
 	return 1;
 }
 
-int main (void){
+int main (void) {
 int indice_cartao;
 
 indice_cartao = Placa_Cartao_Virtual(Placa);
