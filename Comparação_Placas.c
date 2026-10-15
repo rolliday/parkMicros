@@ -5,7 +5,7 @@
 #define QTD_PLACAS 5
 #define TAM_PLACA  7
 
-int Placa_Especial(const char *Placa)
+int Placa_Prioritaria(const char *Placa)
 {
 	static const char lista_placas_especiais[QTD_PLACAS][TAM_PLACA + 1] = {
 		"IOS0098",
