@@ -50,11 +50,24 @@ unsigned char saldo_cartao_virtual[QTD_PLACAS] = {
 int Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado)
 {
 	if (pos >= QTD_PLACAS){
-		return 0;
+		return 0; 	//caso não exista esse valor, só pra garantir
 	}
 	if (saldo_cartao_virtual[pos] < valor_cobrado){
-		return 0;
+		return -1; 	//caso o saldo não seja o suficiente 
 	}
-	saldo_cartao_virtual[pos] -= valor;
+	saldo_cartao_virtual[pos] -= valor_cobrado;
 	return 1;
+}
+
+int main (void){
+int indice_cartao;
+
+indice_cartao = Placa_Cartao_Virtual(Placa);
+
+if (indice_cartao != -1)
+{
+	Desconta_Saldo_Cartao_Virtual(indice, valor_a_pagar); 
+}
+
+
 }
