@@ -45,52 +45,53 @@ static char sombra(int leitura, int ref){
     return dif > LIMIAR;
 }
 
-int pagamento_em_dinheiro(void)
+int pagamento_em_dinheiro(int valor_a_pagar)
 {
     static char sensor_1real  = 0;   // 1 = objeto ainda na frente do LDR
     static char sensor_50cent = 0;
     int valor_pago = 0;
 
-    // sensor de 1 real 
-    if (sombra(adc_ler(CANAL_1REAL), ref_1real)) {
-        if (!sensor_1real) {            // início da passagem -> conta uma vez
-            sensor_1real = 1;           // a variavel muda de estado para evitar que a mesma moeda seja contada varias vezes 
-            valor_pago += VALOR_1REAL;
+    while (valor_pago < valor_a_pagar) {
+        // sensor de 1 real 
+        if (sombra(adc_ler(CANAL_1REAL), ref_1real)) {
+            if (!sensor_1real) {            // início da passagem -> conta uma vez
+                sensor_1real = 1;           // a variavel muda de estado para evitar que a mesma moeda seja contada varias vezes 
+                valor_pago += VALOR_1REAL;
+            }
+        } else {
+            sensor_1real = 0;               // liberou, pode contar de novo
         }
-    } else {
-        sensor_1real = 0;               // liberou, pode contar de novo
-    }
-
-    // sensor para 50 centavos 
-    if (sombra(adc_ler(CANAL_50CENT), ref_50cent)) {
-        if (!sensor_50cent) {
-            sensor_50cent = 1;
-            valor_pago += VALOR_50CENT;
+        
+        // sensor para 50 centavos 
+        if (sombra(adc_ler(CANAL_50CENT), ref_50cent)) {
+            if (!sensor_50cent) {
+                sensor_50cent = 1;
+                valor_pago += VALOR_50CENT;
+            }
+        } else {
+            sensor_50cent = 0;
         }
-    } else {
-        sensor_50cent = 0;
     }
-  
     return valor_pago;         // em centavos!!!!
 }
 
 int main(void)
 {
     int valor_a_pagar =0; 
-    int valor_pago = 0; 
+    int valor_pago = 0;
+    int troco = 0; 
+    
     adc_init();
     calibrar_ldrs();
 
     while (1)
     {
-        
         //atualiza o valor a pagar, em centavos já que quando a gente manda pro sistema do sor tb é em centavos 
-        valor_pago = pagamento_em_dinheiro();
-        if (valor_a_pagar == foi_pago)
-        {
-          //ver exatamente como seria essa lógica na maim 
-          //talvez passar essa lógica de conferencia pra dentro da função??
-          break; 
+        valor_pago = pagamento_em_dinheiro(valor_a_pagar);
+        if (valor_a_pagar < foi_pago) {
+            troco = valor_pago - valor_a_pagar;  
+            //talvez mostrar no LCD "Seu troco é :  "
+            // adicionei isso, pois esqueci antes e caso a gente use ta pronto 
         }
     }
 }
