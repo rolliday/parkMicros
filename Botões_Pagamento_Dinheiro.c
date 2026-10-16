@@ -80,6 +80,7 @@ int botoes_pagamento_em_dinheiro(int valor_a_pagar)
 
 int main(void)
 {
+    //po assumo que não sei se mexo nesses aq, já que os valores vao ser tipo 100, 150, ...
     int valor_pago = 0;
     int valor_a_pagar = 0;
     int troco = 0; 
