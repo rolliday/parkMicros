@@ -57,22 +57,21 @@ int botoes_pagamento_em_dinheiro(int valor_a_pagar)
 
     while (valor_pago < valor_a_pagar){
         if (Debouncer(PINO_1REAL) == PRESSIONADO) {
-        if (!botao_1real) {            // início do aperto -> conta uma vez
-            botao_1real = 1;
-            valor_pago += VALOR_1REAL;
-          }
-        } else {
-        botao_1real = 0;               // soltou, pode contar de novo
-        } 
-
+            if (!botao_1real) {            // início do aperto -> conta uma vez
+                botao_1real = 1;
+                valor_pago += VALOR_1REAL;
+              }
+            } else {
+            botao_1real = 0;               // soltou, pode contar de novo
+            } 
         if (Debouncer(PINO_50CENT) == PRESSIONADO) {
-        if (!botao_50cent) {
-            botao_50cent = 1;
-            valor_pago += VALOR_50CENT;
+            if (!botao_50cent) {
+                botao_50cent = 1;
+                valor_pago += VALOR_50CENT;
+                }
+            } else {
+                botao_50cent = 0;
             }
-        } else {
-            botao_50cent = 0;
-        }
     }
     //valor_pago = valor_pago/100; 
     //se quiser usar em real, mas sinceramente acho trabalho demais já que usei tudo em centavos
