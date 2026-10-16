@@ -58,9 +58,9 @@ int pagamento_em_dinheiro(int valor_a_pagar)
                 sensor_1real = 1;           // a variavel muda de estado para evitar que a mesma moeda seja contada varias vezes 
                 valor_pago += VALOR_1REAL;
             }
-        } else {
-            sensor_1real = 0;               // liberou, pode contar de novo
-        }
+            } else {
+                sensor_1real = 0;               // liberou, pode contar de novo
+            }
         
         // sensor para 50 centavos 
         if (sombra(adc_ler(CANAL_50CENT), ref_50cent)) {
@@ -68,9 +68,9 @@ int pagamento_em_dinheiro(int valor_a_pagar)
                 sensor_50cent = 1;
                 valor_pago += VALOR_50CENT;
             }
-        } else {
-            sensor_50cent = 0;
-        }
+            } else {
+                sensor_50cent = 0;
+            }
     }
     return valor_pago;         // em centavos!!!!
 }
