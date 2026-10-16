@@ -49,6 +49,8 @@ unsigned char saldo_cartao_virtual[QTD_PLACAS] = {
 
 int Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado)
 {
+	valor_cobrado = valor_cobrado/100; 	//passar de centavos para real 
+	
 	if (pos >= QTD_PLACAS){
 		return 0; 	//caso não exista esse valor, só pra garantir
 	}
@@ -66,7 +68,15 @@ indice_cartao = Placa_Cartao_Virtual(Placa);
 
 if (indice_cartao != -1)
 {
-	Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar); 
+	indice_cartao = Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar);
+	if (indice_cartao == 1){
+		//confirmação de pagamento 
+	}
+	if (indice_cartao == -1){
+		//Lcd "Saldo Insuficiente"
+	}else{
+			//FUDEO, pq não é prar dar errado 
+		}
 }
 
 
