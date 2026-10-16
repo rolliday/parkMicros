@@ -5,7 +5,7 @@
 #define QTD_PLACAS 5
 #define TAM_PLACA  7
 
-int Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse nome 3x pq a cada momento chamo diferente ... especial, priritario, preferencial ...
+char Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse nome 3x pq a cada momento chamo diferente ... especial, priritario, preferencial ...
 {
 	static const char lista_placas_especiais[QTD_PLACAS][TAM_PLACA + 1] = {
 		"IOS0098",
@@ -14,7 +14,7 @@ int Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse no
 		"IDS0090",
 		"PDE3400" };
 
-	for (int i = 0; i < QTD_PLACAS; i++)
+	for (char i = 0; i < QTD_PLACAS; i++)
 	{
 		if (strncmp(Placa, lista_placas_especiais[i], TAM_PLACA) == 0) 
 			return 1; 	//retorna que a pessoa é uma pessoa prioritária 
@@ -22,7 +22,7 @@ int Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse no
 	return 0;	// retorna que a pss não é da lista de prioritária 
 }
 
-int Placa_Cartao_Virtual (const char *Placa)
+char Placa_Cartao_Virtual (const char *Placa)
 {
 	static const char lista_cartao_virtual[QTD_PLACAS][TAM_PLACA + 1] = {
 	"WCC9850",
@@ -31,7 +31,7 @@ int Placa_Cartao_Virtual (const char *Placa)
 	"VIR7960",
 	"PAR8320" };
 
-	for (int i = 0; i < QTD_PLACAS; i++)
+	for (char i = 0; i < QTD_PLACAS; i++)
 	{
 		if (strncmp(Placa, lista_cartao_virtual[i], TAM_PLACA) == 0) 
 			return i; 	//pra retornar a posição do cartçao que tem que ser cobrado 
@@ -47,7 +47,7 @@ unsigned char saldo_cartao_virtual[QTD_PLACAS] = {
 	60,
 	20 };
 
-int Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado)
+char Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado)
 {
 	valor_cobrado = valor_cobrado/100; 	//passar de centavos para real 
 	
@@ -62,22 +62,20 @@ int Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado
 }
 
 int main (void) {
-int indice_cartao;
-
-indice_cartao = Placa_Cartao_Virtual(Placa);
-
-if (indice_cartao != -1)
-{
-	indice_cartao = Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar);
-	if (indice_cartao == 1){
-		//confirmação de pagamento 
-	}
-	if (indice_cartao == -1){
-		//Lcd "Saldo Insuficiente"
-	}else{
-			//FUDEO, pq não é prar dar errado 
+	char indice_cartao;
+	
+	indice_cartao = Placa_Cartao_Virtual(Placa);
+	
+	if (indice_cartao != -1)
+	{
+		indice_cartao = Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar);
+		if (indice_cartao == 1){
+			//confirmação de pagamento 
 		}
-}
-
-
+		if (indice_cartao == -1){
+			//Lcd "Saldo Insuficiente"
+		}else{
+				//FUDEO, pq não é prar dar errado 
+			}
+	}
 }
