@@ -47,7 +47,7 @@ unsigned char saldo_cartao_virtual[QTD_PLACAS] = {
 	60,
 	20 };
 
-char Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrado)
+char Desconta_Saldo_Cartao_Virtual(unsigned char pos, int valor_cobrado)
 {
 	valor_cobrado = valor_cobrado/100; 	//passar de centavos para real 
 	
@@ -62,7 +62,8 @@ char Desconta_Saldo_Cartao_Virtual(unsigned char pos, unsigned char valor_cobrad
 }
 
 int main (void) {
-	char indice_cartao;
+	char indice_cartao = 0;
+	int valor_a_pagar = 0; 
 	
 	indice_cartao = Placa_Cartao_Virtual(Placa);
 	
