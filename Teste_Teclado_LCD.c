@@ -1,4 +1,8 @@
 //para testar o teclado e o lcd, a vendo a senha como *****
+#ifndef F_CPU
+#define F_CPU 16000000UL    // tem que vir antes do <util/delay.h>, senão o _delay_us conta errado
+#endif
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdint.h>
@@ -22,7 +26,6 @@
 #define COLUNA_MASCARA ((1 << COLUNA_BASE) | (1 << (COLUNA_BASE + 1)) | (1 << (COLUNA_BASE + 2)))
 #define LINHA_MASCARA  ((1 << LINHA_BASE)  | (1 << (LINHA_BASE + 1))  | (1 << (LINHA_BASE + 2)) | (1 << (LINHA_BASE + 3)))
 
-#define F_CPU 16000000UL
 #define BOUNCE          10
 #define T0_RELOAD_1MS   6
 #define T0_PRESCALE_64  ((1 << CS01) | (1 << CS00))

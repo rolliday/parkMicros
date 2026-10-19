@@ -1,7 +1,12 @@
 //triste em jogar meu Sensor_LDR fora ...
 
+#ifndef F_CPU
+#define F_CPU 16000000UL    // tem que vir antes do <util/delay.h>, senão o _delay_ms conta errado
+#endif
+
 #include <avr/io.h>
 #include <util/delay.h>
+#include "serial.h"
 
 #define COLUNA_PIN      PIND    // registrador de leitura dos botões
 #define COLUNA_PORT     PORTD
@@ -13,8 +18,7 @@
 #define VALOR_1REAL     100     
 #define VALOR_50CENT    50      
 
-#define F_CPU 16000000UL
-#define BOUNCE          10      
+#define BOUNCE          10
 #define INVALIDO        2
 
 #define PRESSIONADO     0       // pull-up: botão pressionado lê 0
@@ -78,21 +82,29 @@ int botoes_pagamento_em_dinheiro(int valor_a_pagar)
     return valor_pago;
 }
 
+// main de teste: botão de 1 real no pino 2 (PD2) e de 50 centavos no pino 3 (PD3), ligados no GND
+// compilar com -DSEM_MAIN pra usar só as funções junto com outro arquivo
+#ifndef SEM_MAIN
 int main(void)
 {
     //po assumo que não sei se mexo nesses aq, já que os valores vao ser tipo 100, 150, ...
     int valor_pago = 0;
-    int valor_a_pagar = 0;
-    int troco = 0; 
+    int valor_a_pagar = 250;    // R$ 2,50 só pra testar
+    int troco = 0;
     botoes_init();
+    serial_init();
 
     while (1)
     {
-        valor_pago = botoes_pagamento_em_dinheiro(valor_a_pagar);   //passar o valor em centavos 
+        printf("Valor a pagar: %d centavos\n", valor_a_pagar);
+        valor_pago = botoes_pagamento_em_dinheiro(valor_a_pagar);   //passar o valor em centavos
+        troco = 0;
         if (valor_pago > valor_a_pagar) {
-          troco = valor_pago - valor_a_pagar; 
+          troco = valor_pago - valor_a_pagar;
           //nao sei o que fazer com isso ...
           //talvez mostrar no LCD "Seu troco é :  "
         }
+        printf("Pago: %d centavos, troco: %d centavos\n", valor_pago, troco);
     }
 }
+#endif

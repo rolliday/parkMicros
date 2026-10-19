@@ -1,12 +1,16 @@
 // minha ideia para a lógica de pagamento em dinheiro 
 //tem que ver melhor esse sensor com 
 
+#ifndef F_CPU
+#define F_CPU 16000000UL    // tem que vir antes do <util/delay.h>, senão o _delay_ms conta errado
+#endif
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdint.h>
+#include "serial.h"
 
-#define F_CPU 16000000UL
-#define LIMIAR          80      // Variação mínima para o ldr contar 
+#define LIMIAR         80      // Variação mínima para o ldr contar 
 
 #define CANAL_1REAL     0       // Entrada A0
 #define CANAL_50CENT    1       // Entrada A1
@@ -75,23 +79,32 @@ int pagamento_em_dinheiro(int valor_a_pagar)
     return valor_pago;         // em centavos!!!!
 }
 
+// main de teste: LDR de 1 real no A0 e de 50 centavos no A1, resultado no Monitor Serial (9600)
+// compilar com -DSEM_MAIN pra usar só as funções junto com outro arquivo
+#ifndef SEM_MAIN
 int main(void)
 {
-    int valor_a_pagar =0; 
+    int valor_a_pagar = 250;    // R$ 2,50 só pra testar
     int valor_pago = 0;
-    int troco = 0; 
-    
+    int troco = 0;
+
     adc_init();
-    calibrar_ldrs();
+    serial_init();
+    calibrar_ldrs();            // não tampar os LDRs enquanto liga, é aqui que pega a referência
+    printf("Referencias: 1 real = %d, 50 cent = %d\n", ref_1real, ref_50cent);
 
     while (1)
     {
-        //atualiza o valor a pagar, em centavos já que quando a gente manda pro sistema do sor tb é em centavos 
+        //atualiza o valor a pagar, em centavos já que quando a gente manda pro sistema do sor tb é em centavos
+        printf("Valor a pagar: %d centavos\n", valor_a_pagar);
         valor_pago = pagamento_em_dinheiro(valor_a_pagar);
-        if (valor_a_pagar < foi_pago) {
-            troco = valor_pago - valor_a_pagar;  
+        troco = 0;
+        if (valor_a_pagar < valor_pago) {
+            troco = valor_pago - valor_a_pagar;
             //talvez mostrar no LCD "Seu troco é :  "
-            // adicionei isso, pois esqueci antes e caso a gente use ta pronto 
+            // adicionei isso, pois esqueci antes e caso a gente use ta pronto
         }
+        printf("Pago: %d centavos, troco: %d centavos\n", valor_pago, troco);
     }
 }
+#endif

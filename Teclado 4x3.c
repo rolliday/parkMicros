@@ -1,20 +1,25 @@
-/* Usei a pinagem com base no lab 6 
+/* Pinagem para o Arduino Uno, a mesma do Teste_Teclado_LCD
+   (a do lab 6 usava PORTA e PORTH, que só existem no Mega)
     Colunas (entradas com pull-up):
-      Coluna 0 -> PH3 (pino 6)
-      Coluna 1 -> PH4 (pino 7)
-      Coluna 2 -> PH5 (pino 8)
+      Coluna 0 -> PB2 (pino 10)
+      Coluna 1 -> PB3 (pino 11)
+      Coluna 2 -> PB4 (pino 12)
     Linhas (saídas):
-      Linha 0 -> PA0 (pino 22)
-      Linha 1 -> PA1 (pino 23)
-      Linha 2 -> PA2 (pino 24)
-      Linha 3 -> PA3 (pino 25)
+      Linha 0 -> PC0 (A0)
+      Linha 1 -> PC1 (A1)
+      Linha 2 -> PC2 (A2)
+      Linha 3 -> PC3 (A3)
  */
+
+#ifndef F_CPU
+#define F_CPU 16000000UL    // tem que vir antes do <util/delay.h>, senão o _delay_us conta errado
+#endif
 
 #include <avr/io.h>
 #include <util/delay.h>
+#include "serial.h"
 
-#define F_CPU 16000000UL
-#define BOUNCE 10  
+#define BOUNCE 10
 #define T0_RELOAD_1MS  6
 #define T0_PRESCALE_64 ((1 << CS01) | (1 << CS00))
 
@@ -23,16 +28,16 @@
 #define SEM_TECLA   0x00
 #define INVALIDO    2  // não é um valor de estado real 
 
-#define COLUNA_DDR     DDRH
-#define COLUNA_PORT    PORTH
-#define COLUNA_PIN     PINH
-#define COLUNA_BASE    PH3           
-#define COLUNA_MASCARA ((1 << PH3) | (1 << PH4) | (1 << PH5))
+#define COLUNA_DDR     DDRB
+#define COLUNA_PORT    PORTB
+#define COLUNA_PIN     PINB
+#define COLUNA_BASE    PB2
+#define COLUNA_MASCARA ((1 << PB2) | (1 << PB3) | (1 << PB4))
 
-#define LINHA_DDR      DDRA
-#define LINHA_PORT     PORTA
-#define LINHA_BASE     PA0          
-#define LINHA_MASCARA  ((1 << PA0) | (1 << PA1) | (1 << PA2) | (1 << PA3))
+#define LINHA_DDR      DDRC
+#define LINHA_PORT     PORTC
+#define LINHA_BASE     PC0
+#define LINHA_MASCARA  ((1 << PC0) | (1 << PC1) | (1 << PC2) | (1 << PC3))
 
 static unsigned char mapa_teclas[NUM_LINHAS][NUM_COLUNAS] = 
 {
@@ -50,6 +55,7 @@ void Timer0_Iniciar(void) {
 
 void Delay1ms(void) {
 	TCNT0 = T0_RELOAD_1MS;
+	TIFR0 = (1 << TOV0);	// limpa a flag antes, senão a primeira espera pode sair na hora
 	while ((TIFR0 & (1 << TOV0)) == 0);
 	TIFR0 = (1 << TOV0);
 }
@@ -130,3 +136,22 @@ unsigned char Teclado_Ler(void) {
 	}
 	return tecla;
 }
+
+// main de teste: mostra no Monitor Serial (9600) cada tecla apertada
+// compilar com -DSEM_MAIN pra usar só as funções junto com outro arquivo
+#ifndef SEM_MAIN
+int main(void) {
+	unsigned char tecla;
+
+	Teclado_Iniciar();
+	serial_init();
+	printf("Aperte as teclas:\n");
+
+	while (1) {
+		tecla = Teclado_Ler();
+		if (tecla != SEM_TECLA) {
+			printf("Tecla: %c\n", tecla);
+		}
+	}
+}
+#endif

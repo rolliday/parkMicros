@@ -1,6 +1,11 @@
-//funções para comparação de placa na questão de pessoa especial e cartão vistual 
+//funções para comparação de placa na questão de pessoa especial e cartão vistual
+
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
 
 #include <string.h>
+#include "serial.h"
 
 #define QTD_PLACAS 5
 #define TAM_PLACA  7
@@ -14,7 +19,7 @@ char Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse n
 		"IDS0090",
 		"PDE3400" };
 
-	for (char i = 0; i < QTD_PLACAS; i++)
+	for (unsigned char i = 0; i < QTD_PLACAS; i++)
 	{
 		if (strncmp(Placa, lista_placas_especiais[i], TAM_PLACA) == 0) 
 			return 1; 	//retorna que a pessoa é uma pessoa prioritária 
@@ -22,7 +27,7 @@ char Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse n
 	return 0;	// retorna que a pss não é da lista de prioritária 
 }
 
-char Placa_Cartao_Virtual (const char *Placa)
+signed char Placa_Cartao_Virtual (const char *Placa)
 {
 	static const char lista_cartao_virtual[QTD_PLACAS][TAM_PLACA + 1] = {
 	"WCC9850",
@@ -31,7 +36,7 @@ char Placa_Cartao_Virtual (const char *Placa)
 	"VIR7960",
 	"PAR8320" };
 
-	for (char i = 0; i < QTD_PLACAS; i++)
+	for (unsigned char i = 0; i < QTD_PLACAS; i++)
 	{
 		if (strncmp(Placa, lista_cartao_virtual[i], TAM_PLACA) == 0) 
 			return i; 	//pra retornar a posição do cartçao que tem que ser cobrado 
@@ -47,7 +52,7 @@ unsigned char saldo_cartao_virtual[QTD_PLACAS] = {
 	60,
 	20 };
 
-char Desconta_Saldo_Cartao_Virtual(unsigned char pos, int valor_cobrado)
+signed char Desconta_Saldo_Cartao_Virtual(unsigned char pos, int valor_cobrado)
 {
 	valor_cobrado = valor_cobrado/100; 	//passar de centavos para real 
 	
@@ -61,22 +66,46 @@ char Desconta_Saldo_Cartao_Virtual(unsigned char pos, int valor_cobrado)
 	return 1;
 }
 
+// main de teste: mostra no Monitor Serial (9600) o resultado de cada placa
+// compilar com -DSEM_MAIN pra usar só as funções junto com outro arquivo
+#ifndef SEM_MAIN
 int main (void) {
-	char indice_cartao = 0;
-	int valor_a_pagar = 0; 
-	
-	indice_cartao = Placa_Cartao_Virtual(Placa);
-	
-	if (indice_cartao != -1)
+	static const char *placas_teste[] = { "IOS0098", "WCC9850", "PIN0C20", "ABC1234" };
+	signed char indice_cartao = 0;	// signed: tem que caber o -1 (no Atmel Studio o char é unsigned)
+	signed char resultado = 0;
+	int valor_a_pagar = 2500;	// R$ 25,00 só pra testar (o PIN0C20 tem 20 de saldo, então tem que dar insuficiente)
+
+	serial_init();
+
+	for (unsigned char p = 0; p < 4; p++)
 	{
-		indice_cartao = Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar);
-		if (indice_cartao == 1){
-			//confirmação de pagamento 
+		const char *Placa = placas_teste[p];
+		printf("Placa %s: ", Placa);
+
+		if (Placa_Preferencial(Placa)){
+			printf("preferencial, ");
 		}
-		if (indice_cartao == -1){
-			//Lcd "Saldo Insuficiente"
-		}else{
-				//FUDEO, pq não é prar dar errado 
+
+		indice_cartao = Placa_Cartao_Virtual(Placa);
+
+		if (indice_cartao != -1)
+		{
+			resultado = Desconta_Saldo_Cartao_Virtual(indice_cartao, valor_a_pagar);
+			if (resultado == 1){
+				//confirmação de pagamento
+				printf("cartao virtual pago, saldo agora %d\n", saldo_cartao_virtual[(unsigned char)indice_cartao]);
+			}else if (resultado == -1){
+				//Lcd "Saldo Insuficiente"
+				printf("cartao virtual com saldo insuficiente\n");
+			}else{
+				//FUDEO, pq não é prar dar errado
+				printf("erro no cartao virtual\n");
 			}
+		}else{
+			printf("sem cartao virtual\n");
+		}
 	}
+
+	while (1);	// no microcontrolador o main não pode terminar
 }
+#endif

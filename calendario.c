@@ -1,14 +1,12 @@
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-// no Arduino usa o PROGMEM de verdade; no PC (para testar) finge que ele nao existe
-#ifdef __AVR__
-  #include <avr/pgmspace.h>
-#else
-  #define PROGMEM
-  #define pgm_read_byte(addr) (*(addr))
-#endif
+#include <avr/pgmspace.h>   // PROGMEM: guarda tabelas na flash em vez da RAM
+#include "serial.h"         // o printf sai pela serial (Monitor Serial em 9600)
 
 // dias de cada mes (ano nao bissexto), guardado so na flash
 const uint8_t meses[12] PROGMEM = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -198,7 +196,10 @@ bool feriado(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
   }
 }
 
-int main() {
+// compilar com -DSEM_MAIN pra usar so as funcoes junto com outro arquivo
+#ifndef SEM_MAIN
+int main(void) {
+  serial_init();
   uint8_t dia = 3, mes = 3;
   uint16_t ano = 2076;
   bool flag_bissexto = bissexto(ano);
@@ -231,7 +232,9 @@ int main() {
       printf("Sexta-feira\n");
       break;
   }
-  return 0;
+
+  while (1);  // no microcontrolador o main nao pode terminar
 }
+#endif
 
 // adicionar testes
