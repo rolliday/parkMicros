@@ -8,12 +8,12 @@
 #include <util/delay.h>
 #include "serial.h"
 
-#define COLUNA_PIN      PIND    // registrador de leitura dos botões
-#define COLUNA_PORT     PORTD
-#define COLUNA_DDR      DDRD
+#define BOTAO_PIN       PINB    // registrador de leitura dos botões
+#define BOTAO_PORT      PORTB
+#define BOTAO_DDR       DDRB
 
-#define PINO_1REAL      2       // PD2
-#define PINO_50CENT     3       // PD3
+#define PINO_1REAL      PB4     // pino 12 do Arduino
+#define PINO_50CENT     PB5     // pino 13 do Arduino
 
 #define VALOR_1REAL     100     
 #define VALOR_50CENT    50      
@@ -34,7 +34,7 @@ unsigned char Debouncer(unsigned char pino) {
 
     while (1) {
         Delay1ms();
-        atual = (COLUNA_PIN >> pino) & 0x01;
+        atual = (BOTAO_PIN >> pino) & 0x01;
         if (atual == anterior) {
             count++;
         } else {
@@ -49,8 +49,8 @@ unsigned char Debouncer(unsigned char pino) {
 
 //configura os botões 
 void botoes_init(void) {
-    COLUNA_DDR  &= ~((1 << PINO_1REAL) | (1 << PINO_50CENT));   // entradas
-    COLUNA_PORT |=  ((1 << PINO_1REAL) | (1 << PINO_50CENT));   // pull-up ligado
+    BOTAO_DDR  &= ~((1 << PINO_1REAL) | (1 << PINO_50CENT));   // entradas
+    BOTAO_PORT |=  ((1 << PINO_1REAL) | (1 << PINO_50CENT));   // pull-up ligado
 }
 
 int botoes_pagamento_em_dinheiro(int valor_a_pagar)
@@ -82,7 +82,7 @@ int botoes_pagamento_em_dinheiro(int valor_a_pagar)
     return valor_pago;
 }
 
-// main de teste: botão de 1 real no pino 2 (PD2) e de 50 centavos no pino 3 (PD3), ligados no GND
+// main de teste: botão de 1 real no pino 12 (PB4) e de 50 centavos no pino 13 (PB5), ligados no GND
 // compilar com -DSEM_MAIN pra usar só as funções junto com outro arquivo
 #ifndef SEM_MAIN
 int main(void)

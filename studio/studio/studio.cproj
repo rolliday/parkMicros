@@ -144,9 +144,9 @@
       <SubType>compile</SubType>
       <Link>Dados_Placas_Cartoes.c</Link>
     </None>
-    <None Include="..\..\Sensor_LDR.c">
+    <None Include="..\..\LED_Alerta.c">
       <SubType>compile</SubType>
-      <Link>Sensor_LDR.c</Link>
+      <Link>LED_Alerta.c</Link>
     </None>
     <None Include="..\..\Teclado 4x3.c">
       <SubType>compile</SubType>

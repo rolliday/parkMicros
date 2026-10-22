@@ -1,14 +1,15 @@
-/* Pinagem para o Arduino Uno, a mesma do Teste_Teclado_LCD
+/* Pinagem para o Arduino Uno, pinos 1 a 7 do teclado ligados nos pinos 4 a 10 do Arduino
    (a do lab 6 usava PORTA e PORTH, que só existem no Mega)
-    Colunas (entradas com pull-up):
-      Coluna 0 -> PB2 (pino 10)
-      Coluna 1 -> PB3 (pino 11)
-      Coluna 2 -> PB4 (pino 12)
     Linhas (saídas):
-      Linha 0 -> PC0 (A0)
-      Linha 1 -> PC1 (A1)
-      Linha 2 -> PC2 (A2)
-      Linha 3 -> PC3 (A3)
+      Linha 0 -> PD4 (pino 4)  <- pino 1 do teclado
+      Linha 1 -> PD5 (pino 5)  <- pino 2 do teclado
+      Linha 2 -> PD6 (pino 6)  <- pino 3 do teclado
+      Linha 3 -> PD7 (pino 7)  <- pino 4 do teclado
+    Colunas (entradas com pull-up):
+      Coluna 0 -> PB0 (pino 8)  <- pino 5 do teclado
+      Coluna 1 -> PB1 (pino 9)  <- pino 6 do teclado
+      Coluna 2 -> PB2 (pino 10) <- pino 7 do teclado
+    se as teclas saírem trocadas, é só ajustar o mapa_teclas (alguns teclados têm outra ordem nos pinos)
  */
 
 #ifndef F_CPU
@@ -31,13 +32,13 @@
 #define COLUNA_DDR     DDRB
 #define COLUNA_PORT    PORTB
 #define COLUNA_PIN     PINB
-#define COLUNA_BASE    PB2
-#define COLUNA_MASCARA ((1 << PB2) | (1 << PB3) | (1 << PB4))
+#define COLUNA_BASE    PB0
+#define COLUNA_MASCARA ((1 << PB0) | (1 << PB1) | (1 << PB2))
 
-#define LINHA_DDR      DDRC
-#define LINHA_PORT     PORTC
-#define LINHA_BASE     PC0
-#define LINHA_MASCARA  ((1 << PC0) | (1 << PC1) | (1 << PC2) | (1 << PC3))
+#define LINHA_DDR      DDRD
+#define LINHA_PORT     PORTD
+#define LINHA_BASE     PD4
+#define LINHA_MASCARA  ((1 << PD4) | (1 << PD5) | (1 << PD6) | (1 << PD7))
 
 static unsigned char mapa_teclas[NUM_LINHAS][NUM_COLUNAS] = 
 {

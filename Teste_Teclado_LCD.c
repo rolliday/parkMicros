@@ -7,21 +7,31 @@
 #include <util/delay.h>
 #include <stdint.h>
 
-//pinagem 
+/* pinagem
+    teclado: pinos 1 a 7 do teclado nos pinos 4 a 10 do Arduino (igual ao Teclado 4x3.c)
+      linhas  -> PD4..PD7 (pinos 4 a 7)
+      colunas -> PB0..PB2 (pinos 8 a 10)
+    LCD com módulo I2C (PCF8574):
+      SDA -> A4 (PC4)
+      SCL -> A5 (PC5)
+*/
   #define COLUNA_DDR     DDRB
   #define COLUNA_PORT    PORTB
   #define COLUNA_PIN     PINB
-  #define COLUNA_BASE    PB2
-  #define LINHA_DDR      DDRC
-  #define LINHA_PORT     PORTC
-  #define LINHA_BASE     PC0
+  #define COLUNA_BASE    PB0
+  #define LINHA_DDR      DDRD
+  #define LINHA_PORT     PORTD
+  #define LINHA_BASE     PD4
 
-  #define LCD_CTRL_DDR   DDRB
-  #define LCD_CTRL_PORT  PORTB
-  #define LCD_RS         PB0
-  #define LCD_E          PB1
-  #define LCD_DATA_DDR   DDRD
-  #define LCD_DATA_PORT  PORTD      
+//endereço do módulo I2C: depende do chip, o lcd_init testa os dois
+  #define LCD_I2C_END_1  0x27       // PCF8574T, o mais comum
+  #define LCD_I2C_END_2  0x3F       // PCF8574AT
+  #define TWI_TWBR_100K  72         // TWBR = (F_CPU / 100 kHz - 16) / 2
+
+//o que cada saída do PCF8574 liga no LCD (P4..P7 vão no D4..D7)
+  #define LCD_RS         0x01       // P0
+  #define LCD_E          0x04       // P2
+  #define LCD_LUZ        0x08       // P3, luz de fundo
 
 #define COLUNA_MASCARA ((1 << COLUNA_BASE) | (1 << (COLUNA_BASE + 1)) | (1 << (COLUNA_BASE + 2)))
 #define LINHA_MASCARA  ((1 << LINHA_BASE)  | (1 << (LINHA_BASE + 1))  | (1 << (LINHA_BASE + 2)) | (1 << (LINHA_BASE + 3)))
@@ -156,25 +166,56 @@ unsigned char Teclado_Ler(void) {
     return tecla;
 }
 
-//busquei ideias, mas eles usavam uma biblioteca do arduino e eu não sei se pode 
-//pedi ajuda pra ia, acho mais tranquilo nessa parte pois é só função de inicialização 
-static void lcd_pulse_enable(void) {
-    LCD_CTRL_PORT |= (1 << LCD_E);
-    __asm__ __volatile__("nop\n nop\n nop\n nop\n nop\n nop\n nop\n nop\n");  /* 500 ns */
-    LCD_CTRL_PORT &= ~(1 << LCD_E);
+//I2C (TWI) do ATmega, só escrita, que é o que o LCD precisa
+void TWI_Iniciar(void) {
+    TWSR = 0x00;                // prescaler 1
+    TWBR = TWI_TWBR_100K;       // 100 kHz
+    TWCR = (1 << TWEN);
 }
 
-static void lcd_write_nibble(unsigned char nibble) {
-    LCD_DATA_PORT = (LCD_DATA_PORT & 0x0F) | ((nibble & 0x0F) << 4);
-    lcd_pulse_enable();
+static void twi_esperar(void) {
+    while ((TWCR & (1 << TWINT)) == 0);
+}
+
+//manda o START e o endereço; retorna 1 se o módulo respondeu (ACK)
+static unsigned char twi_start(unsigned char endereco) {
+    TWCR = (1 << TWINT) | (1 << TWSTA) | (1 << TWEN);
+    twi_esperar();
+    TWDR = endereco << 1;       // bit 0 = 0 -> escrita
+    TWCR = (1 << TWINT) | (1 << TWEN);
+    twi_esperar();
+    return (TWSR & 0xF8) == 0x18;   // 0x18 = endereço enviado e ACK recebido
+}
+
+static void twi_escrever(unsigned char dado) {
+    TWDR = dado;
+    TWCR = (1 << TWINT) | (1 << TWEN);
+    twi_esperar();
+}
+
+static void twi_stop(void) {
+    TWCR = (1 << TWINT) | (1 << TWSTO) | (1 << TWEN);
+    while (TWCR & (1 << TWSTO));
+}
+
+//busquei ideias, mas eles usavam uma biblioteca do arduino e eu não sei se pode
+//pedi ajuda pra ia, acho mais tranquilo nessa parte pois é só função de inicialização
+static unsigned char lcd_endereco = LCD_I2C_END_1;
+
+//o LCD lê o dado na descida do E, então manda o mesmo byte com E em 1 e depois com E em 0
+//cada byte no I2C leva ~90 us, bem mais que os 450 ns que o E precisa ficar em 1
+static void lcd_write_nibble(unsigned char nibble, unsigned char rs) {
+    unsigned char dado = ((nibble & 0x0F) << 4) | LCD_LUZ | (rs ? LCD_RS : 0);
+
+    twi_start(lcd_endereco);
+    twi_escrever(dado | LCD_E);
+    twi_escrever(dado);
+    twi_stop();
 }
 
 static void lcd_send(unsigned char valor, unsigned char rs) {
-    if (rs) LCD_CTRL_PORT |=  (1 << LCD_RS);
-    else    LCD_CTRL_PORT &= ~(1 << LCD_RS);
-
-    lcd_write_nibble(valor >> 4);
-    lcd_write_nibble(valor);
+    lcd_write_nibble(valor >> 4, rs);
+    lcd_write_nibble(valor, rs);
     Delay40us();
 }
 
@@ -206,19 +247,24 @@ void lcd_set_cursor(unsigned char col, unsigned char linha) {
 }
 
 void lcd_init(void) {
-    LCD_CTRL_DDR |= (1 << LCD_RS) | (1 << LCD_E);
-    LCD_DATA_DDR |= 0xF0;
-    LCD_CTRL_PORT &= ~((1 << LCD_RS) | (1 << LCD_E));
-
+    TWI_Iniciar();
     DelayNms(50);                   /* > 40 ms após Vcc estável */
 
-    lcd_write_nibble(0x03);
+    //descobre o endereço do módulo: se o 0x27 não responder, usa o 0x3F
+    if (twi_start(LCD_I2C_END_1)) {
+        lcd_endereco = LCD_I2C_END_1;
+    } else {
+        lcd_endereco = LCD_I2C_END_2;
+    }
+    twi_stop();
+
+    lcd_write_nibble(0x03, 0);
     DelayNms(5);                    /* > 4,1 ms */
-    lcd_write_nibble(0x03);
+    lcd_write_nibble(0x03, 0);
     Delay40us_x(3);                 /* 120 us (> 100 us) */
-    lcd_write_nibble(0x03);
+    lcd_write_nibble(0x03, 0);
     Delay40us();
-    lcd_write_nibble(0x02);         /* passa para 4 bits */
+    lcd_write_nibble(0x02, 0);      /* passa para 4 bits */
     Delay40us();
 
     lcd_cmd(LCD_FUNC_4BIT_2L);
