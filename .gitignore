@@ -1,2 +1,8 @@
 .vscode
 calendario
+# Microchip Studio
+Debug/
+Release/
+.vs/
+*.atsuo
+*.componentinfo.xml
