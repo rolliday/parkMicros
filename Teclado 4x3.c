@@ -139,24 +139,3 @@ unsigned char Teclado_Ler(void) {
 	}
 	return tecla;
 }
-
-// main de teste: mostra no Monitor Serial (9600) cada tecla apertada
-// pra rodar: definir o símbolo TESTE_TECLADO no projeto
-#ifdef TESTE_TECLADO
-#include "serial.h"
-
-int main(void) {
-	unsigned char tecla;
-
-	Teclado_Iniciar();
-	serial_init();
-	printf("Aperte as teclas:\n");
-
-	while (1) {
-		tecla = Teclado_Ler();
-		if (tecla != SEM_TECLA) {
-			printf("Tecla: %c\n", tecla);
-		}
-	}
-}
-#endif

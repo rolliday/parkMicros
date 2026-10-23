@@ -106,11 +106,9 @@ TABELA = {
 }
 
 # inclui o calendario.c inteiro para ter acesso as funcoes static (ex.: pascoa());
-# o main dele eh renomeado para nao conflitar, e teste_pascoa() eh exportada para o Python
+# teste_pascoa() eh exportada para o Python
 WRAPPER_C = """
-#define main calendario_main
 #include "{caminho}"
-#undef main
 
 bool teste_pascoa(uint8_t dia, uint8_t mes, uint16_t ano) {{
   return pascoa(dia, mes, ano, bissexto(ano));
@@ -128,9 +126,13 @@ def compilar_calendario(pasta):
     biblioteca = Path(pasta) / "calendario.so"
     wrapper.write_text(WRAPPER_C.format(caminho=CALENDARIO_C.as_posix()))
 
+    pgmspace = Path(pasta) / "avr" / "pgmspace.h"
+    pgmspace.parent.mkdir()
+    pgmspace.write_text("#define PROGMEM\n#define pgm_read_byte(addr) (*(addr))\n")
+
     compilador = os.environ.get("CC", "cc")
     subprocess.run([compilador, "-Wall", "-Wextra", "-shared", "-fPIC",
-                    "-o", str(biblioteca), str(wrapper)], check=True)
+                    "-I", str(pasta), "-o", str(biblioteca), str(wrapper)], check=True)
 
     lib = ctypes.CDLL(str(biblioteca))
     lib.teste_pascoa.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16]
@@ -193,7 +195,7 @@ def main():
     total_verificacoes = 0
     total_falhas = 0
 
-    with tempfile.TemporaryDirectory() as pasta:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as pasta:
         lib = compilar_calendario(pasta)
 
         for ano, datas in TABELA.items():

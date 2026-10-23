@@ -59,32 +59,3 @@ int botoes_pagamento_em_dinheiro(int valor_a_pagar)
     //se quiser usar em real, mas sinceramente acho trabalho demais já que usei tudo em centavos
     return valor_pago;
 }
-
-// main de teste: botão de 1 real no pino 12 (PB4) e de 50 centavos no pino 13 (PB5), ligados no GND
-// pra rodar: definir o símbolo TESTE_BOTOES no projeto
-#ifdef TESTE_BOTOES
-#include "serial.h"
-
-int main(void)
-{
-    //po assumo que não sei se mexo nesses aq, já que os valores vao ser tipo 100, 150, ...
-    int valor_pago = 0;
-    int valor_a_pagar = 250;    // R$ 2,50 só pra testar
-    int troco = 0;
-    botoes_init();
-    serial_init();
-
-    while (1)
-    {
-        printf("Valor a pagar: %d centavos\n", valor_a_pagar);
-        valor_pago = botoes_pagamento_em_dinheiro(valor_a_pagar);   //passar o valor em centavos
-        troco = 0;
-        if (valor_pago > valor_a_pagar) {
-          troco = valor_pago - valor_a_pagar;
-          //nao sei o que fazer com isso ...
-          //talvez mostrar no LCD "Seu troco é :  "
-        }
-        printf("Pago: %d centavos, troco: %d centavos\n", valor_pago, troco);
-    }
-}
-#endif

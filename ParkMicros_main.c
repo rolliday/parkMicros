@@ -17,9 +17,6 @@ void lcd_init(void);                        // Teste_Teclado_LCD.c
 void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
 unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
 
-//a main não roda quando algum teste está ligado (símbolo TESTE_... definido no projeto)
-#if !defined(TESTE_TECLADO) && !defined(TESTE_TECLADO_LCD) && !defined(TESTE_BOTOES) && \
-    !defined(TESTE_PLACAS) && !defined(TESTE_DADOS) && !defined(TESTE_CALENDARIO)
 int main (void){
 unsigned char tecla, estado, tempo, data, pagamento;
 unsigned char Pss_preferencial = 0;
@@ -204,4 +201,3 @@ while(1){
     
 }
 }
-#endif

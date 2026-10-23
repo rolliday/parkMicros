@@ -222,26 +222,3 @@ void Leitura_Cartao_Senha(char *cartao, char *senha) {
     Campo_Ler(cartao, CARTAO_DIGITOS, 0, CARTAO_COL, 0);
     Campo_Ler(senha,  SENHA_DIGITOS,  1, SENHA_COL,  1);
 }
-
-// main de teste: cartão e senha no LCD
-// pra rodar: definir o símbolo TESTE_TECLADO_LCD no projeto
-#ifdef TESTE_TECLADO_LCD
-int main(void) {
-    char cartao[CARTAO_DIGITOS + 1];
-    char senha[SENHA_DIGITOS + 1];
-
-    Timer0_Iniciar();
-    Timer2_Iniciar();
-    lcd_init();
-    Teclado_Iniciar();
-
-    while (1) {
-        Leitura_Cartao_Senha(cartao, senha);   // bloqueia até os dois campos
-
-        lcd_clear();
-        lcd_set_cursor(0, 0);
-        lcd_print("Dados lidos!");
-        DelayNms(2000);
-    }
-}
-#endif
