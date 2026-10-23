@@ -27,12 +27,15 @@ void lcd_set_cursor(unsigned char col, unsigned char linha);   // Teste_Teclado_
 void lcd_putc(char c);                      // Teste_Teclado_LCD.c
 void lcd_print(const char *s);              // Teste_Teclado_LCD.c
 void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
+unsigned int Relogio_Meios_Segundos(void);  // LED_Alerta.c (Timer1)
 unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
+unsigned char Dias_Do_Mes(unsigned char mes, unsigned int ano);                          // calendario.c
 
-//data e hora que chegam do sistema do professor ('S' 'H')
-static unsigned char dia, mes, hora, minuto;
+//data e hora: acertadas pelo sistema do professor ('S' 'H') e depois contadas pelo próprio Arduino
+static unsigned char dia, mes, hora, minuto, segundo;
 static unsigned int ano;
 static unsigned char hora_recebida = 0;     // 0 enquanto não chegou nenhuma 'S' 'H'
+static unsigned char relogio_meios = 0;     // meio segundo que sobrou da última atualização
 
 //número do cartão que chega do sistema do professor ('S' 'C'), 6 dígitos + '\0'
 static char cartao_inserido[7] = "";
@@ -84,6 +87,9 @@ static unsigned char Servidor_Processar(void) {
             }
             hora   = dados[4];
             minuto = dados[5];
+            segundo = 0;                    // a mensagem não manda segundos
+            relogio_meios = 0;
+            Relogio_Meios_Segundos();       // descarta o tempo contado antes de acertar o relógio
             hora_recebida = 1;
             serial_enviar('P');
             serial_enviar('H');
@@ -117,6 +123,35 @@ static unsigned char Servidor_Processar(void) {
         default:
             return 0;
     }
+}
+
+/* faz o relógio andar com o tempo contado pelo Timer1 (a cada 0,5 s, no LED_Alerta.c)
+   o sistema do professor só acerta a hora; depois disso quem conta é o Arduino
+   retorna 1 quando o minuto mudou (pra atualizar o LCD) */
+static unsigned char Relogio_Atualizar(void) {
+    unsigned int meios = Relogio_Meios_Segundos() + relogio_meios;
+    unsigned char mudou = 0;
+
+    if (!hora_recebida) {
+        return 0;           // ainda não sabe a hora, não tem o que contar
+    }
+
+    relogio_meios = meios % 2;
+    for (meios /= 2; meios > 0; meios--) {      // um segundo por vez
+        if (++segundo < 60) continue;
+        segundo = 0;
+        mudou = 1;
+        if (++minuto < 60) continue;
+        minuto = 0;
+        if (++hora < 24) continue;
+        hora = 0;
+        if (++dia <= Dias_Do_Mes(mes, ano)) continue;
+        dia = 1;
+        if (++mes <= 12) continue;
+        mes = 1;
+        ano++;
+    }
+    return mudou;
 }
 
 static void lcd_dois_digitos(unsigned char n) {
@@ -159,12 +194,17 @@ LED_Alerta_Iniciar();
 
 tecla = SEM_TECLA;
 while(1){
+    Relogio_Atualizar();
     Mostrar_Data_Hora();
     tecla = Teclado_Ler();
     while (tecla != '1'){       // só a tecla 1 começa o cadastro do carro, as outras são ignoradas
         //função de mostar o horario no lcd
-        //a data e a hora chegam do sistema do professor pela serial ('S' 'H')
-        if (Servidor_Processar()) {
+        //a hora é acertada pelo sistema do professor ('S' 'H') e o Arduino conta sozinho depois
+        unsigned char atualizar = Servidor_Processar();
+        if (Relogio_Atualizar()) {
+            atualizar = 1;      // virou o minuto
+        }
+        if (atualizar) {
             Mostrar_Data_Hora();
         }
         tecla = Teclado_Ler();  // lê de novo, senão fica preso aqui pra sempre
@@ -208,6 +248,7 @@ while(1){
         2 - sabado 
         default - domingos/feriados
     */
+    Relogio_Atualizar();    // a data tem que estar em dia antes de ver o tipo de dia
     data = Calendario_Flag(dia, mes, ano); //nome só pra referencia
 
     switch (data){

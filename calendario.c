@@ -20,6 +20,17 @@ bool bissexto(uint16_t a) {
   return (a % 4) == 0;
 }
 
+// quantos dias tem o mes (fevereiro com 29 no ano bissexto); usado pelo relogio da main pra virar o dia
+uint8_t Dias_Do_Mes(uint8_t mes, uint16_t ano) {
+  if (mes < 1 || mes > 12) {
+    return 31;
+  }
+  if (mes == 2 && bissexto(ano)) {
+    return 29;
+  }
+  return pgm_read_byte(&meses[mes - 1]);
+}
+
 // calcula quantos anos bissextos existem entre 2000 (inclusive) e o ano fornecido (exclusive)
 // so eh valido para anos entre 2000 e 2099
 static uint8_t quantos_bissextos(uint16_t a) {
