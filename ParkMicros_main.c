@@ -602,7 +602,8 @@ while(1){
         Teclado_Ler_Placa(placa, 0, 1);
 
         if (strcmp(placa, "ADMPARK") == 0 || Placa_Formato_Valido(placa)) {
-            break;
+            ADMPARK (); 
+            continue; 
         }
         lcd_clear();
         lcd_set_cursor(0, 0);
@@ -616,6 +617,16 @@ while(1){
         continue;               // por enquanto volta pra tela de inatividade (administrador não paga)
    }
 
+    if (verificar_data_bloqueada(dia, mes, ano)) {
+        lcd_clear();
+        lcd_set_cursor(0, 0);
+        lcd_print("ESTAC. PROIBIDO");
+        lcd_set_cursor(0, 1);
+        lcd_print("Data bloqueada!");
+        Esperar_Ms(2500);
+        continue; // Descarta o fluxo atual e volta para a tela inicial
+    }
+    
     Pss_preferencial = Placa_Preferencial(placa);   // 1 se idosa ou pcd
 
     //Calendário
