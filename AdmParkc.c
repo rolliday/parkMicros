@@ -6,6 +6,7 @@
 static void ADMPARK () {
   char senha [TAM_SENHA + 1]; 
   unsigned char adm; 
+  unsigned char tecla; 
 
   lcd_clear();
   lcd_set_cursor(0, 0);
