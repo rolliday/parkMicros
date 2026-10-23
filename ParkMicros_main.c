@@ -32,6 +32,7 @@ void lcd_print(const char *s);              // Teste_Teclado_LCD.c
 void Campo_Ler(char *buf, unsigned char tam, unsigned char oculto, unsigned char col, unsigned char linha);  // Teste_Teclado_LCD.c
 void botoes_init(void);                     // Botoes_Pagamento_Dinheiro.c
 int botoes_ler_moeda(void);                 // Botoes_Pagamento_Dinheiro.c
+void LED_Alerta_Desligar(void);             // LED_Alerta.c (Timer1)
 void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
 unsigned int Relogio_Meios_Segundos(void);  // LED_Alerta.c (Timer1)
 unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
@@ -561,7 +562,7 @@ static unsigned char Pagar_Cartao_Azul(const char *placa, int valor) {
 }
 
 int main (void){
-unsigned char tecla, estado, tempo, data, pagamento;
+unsigned char tecla, estado, tempo, data, pagamento, atraso;
 unsigned char pago;       // 1 quando o pagamento deu certo
 unsigned char Pss_preferencial = 0;
 unsigned char cobranca;    // linha da tabela de preços (COBRA_...)
@@ -614,7 +615,8 @@ while(1){
     }
 
     if (strcmp(placa, "ADMPARK") == 0) {
-        ADMPARK(); 
+        LED_Alerta_Desligar();
+        ADMPARK(); // adicionar na main ou listar la em cima, o que preferir 
         continue;     // Retorna para a tela inicial 
     }
 
@@ -707,9 +709,37 @@ while(1){
     Registrar_Estacionamento(placa, tempo);
     Imprimir_Comprovante(placa, tempo, valor, pagamento);
 
+    // eu não sei como fazer a parte de contagem de tempo ... 
+    // mas eu pensei em ser algo que conte e retorne uma flag, pra assim acionar uma condicional 
+    atraso = 0; 
+    atraso = Contagem_Tempo_estacionado(); // Retorna 1 se o tempo estourou 
+    
+    if (atraso == 1) {
+        if (Pss_preferencial == 1) {
+            atraso = 0; // preferencial nao tem limite 
+            LED_Alerta_Desligar(); // garante que o led fica apagado
+        } 
+        else if (pagamento == 3) {
+            // tenta a extensão automática 
+            pago = Pagar_Cartao_Azul(placa, Calcular_Valor(cobranca, 0)); 
+            
+            if (pago == 1) {
+                atraso = 0; // tempo estendido 
+                LED_Alerta_Desligar(); // garante o led desligado 
+            } else {
+                // Cartão azul sem saldo suficiente 
+                LED_Alerta_Ligar(); 
+            }
+        } 
+        else {
+            // condições sem renovação automática 
+            LED_Alerta_Ligar(); 
+        }
+    } else {
+        LED_Alerta_Desligar();
+    }
     //inicio da contagem do tempo, não sei como fazer isso ainda 
     //tolerância de 3 mins
     //Led pisca 
-    
 }
 }
