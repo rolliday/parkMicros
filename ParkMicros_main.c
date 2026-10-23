@@ -55,6 +55,9 @@ static unsigned char resposta_sp = 0;
 //vira 1 quando chega a resposta 'S' 'I' do comprovante
 static unsigned char resposta_si = 0;
 
+//
+static char dados_ocorrencia[40] = "Nenhuma ocorrencia";
+
 //espera um byte da serial por até SERIAL_ESPERA_MS; retorna 1 se chegou
 static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
     for (unsigned char t = 0; t < SERIAL_ESPERA_MS; t++) {
@@ -114,14 +117,16 @@ static unsigned char Servidor_Processar(void) {
             serial_enviar('H');
             return 1;
 
-        case 'V':
+       case 'V':
             if (!Serial_Esperar_Byte(&n)) {
                 return 0;
             }
-            while (n--) {
-                if (!Serial_Esperar_Byte(&dado)) {
-                    return 0;
+           {
+                unsigned char i;
+                for (i = 0; i < n && i < sizeof(dados_ocorrencia) - 1; i++) {
+                    if (!Serial_Esperar_Byte((unsigned char*)&dados_ocorrencia[i])) return 0;
                 }
+                dados_ocorrencia[i] = '\0';
             }
             serial_enviar('P');
             serial_enviar('V');
