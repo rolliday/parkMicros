@@ -574,7 +574,8 @@ while(1){
     Relogio_Atualizar();
     Mostrar_Data_Hora();
     tecla = Teclado_Ler();
-    while (tecla != '1'){       // só a tecla 1 começa o cadastro do carro, as outras são ignoradas
+    while (tecla != '1'){       
+        // só a tecla 1 começa o cadastro do carro, as outras são ignoradas
         //função de mostar o horario no lcd
         //a hora é acertada pelo sistema do professor ('S' 'H') e o Arduino conta sozinho depois
         unsigned char atualizar = Servidor_Processar();
@@ -654,11 +655,6 @@ while(1){
         continue;
     }
 
-
-
-    //Lcd "Forma de pagamento:"
-    // "1) Dinheiro     2)Cartão    3)Cartão Azul"
-    //o cartão azul só aparece se a placa tiver um; se o pagamento falhar, volta pra cá
     pago = 0;
     while (!pago) {
         lcd_clear();
@@ -674,9 +670,6 @@ while(1){
 
         switch(pagamento){
             case 1: 
-                //pagamento em dinheiro 
-                //lcd "Insira o dinheiro:"
-                //ler do sensor (o sensor virou os botões das moedas)
                 Pagar_Dinheiro(valor);          // só volta quando o valor exato entrou
                 lcd_clear();
                 lcd_set_cursor(0, 0);
@@ -685,16 +678,9 @@ while(1){
                 pago = 1;
                 break; 
             case 2: 
-                //pagamento em cartão, sistema do sor 
-                //lcd "Numéro do cartão:" (o cartão vem do aplicativo, "Simula inserção")
-                //lcd "Senha: ", os numeros não aparecem na tela
-                //Enviar dados para o sor
                 pago = Pagar_Cartao(valor);
                 break; 
             case 3:
-                //pagamento em cartão azul 
-                //verifica se a placa está vinculada
-                //fazer desconto do valor 
                 pago = Pagar_Cartao_Azul(placa, valor);
                 break; 
         }
