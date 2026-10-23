@@ -33,7 +33,44 @@ static void ADMPARK () {
       */
     switch (adm){
       case 0: 
-        //modificar data ou hora 
+        // puramente ia, nem sei o que ta acontecendo sssjs
+        char buf_dh[13];
+        lcd_clear();
+        lcd_set_cursor(0, 0);
+        lcd_print("Nova Data/Hora");
+        lcd_set_cursor(0, 1);
+        lcd_print("DDMMAAAAHHMM:");
+        
+        // Vamos ler 12 caracteres (0 = sem ocultar senha/texto)
+        Campo_Ler(buf_dh, 12, 0, 0, 1); 
+        
+        if (strlen(buf_dh) == 12) {
+            uint8_t d  = (buf_dh[0] - '0') * 10 + (buf_dh[1] - '0');
+            uint8_t m  = (buf_dh[2] - '0') * 10 + (buf_dh[3] - '0');
+            uint16_t a = (buf_dh[4] - '0') * 1000 + (buf_dh[5] - '0') * 100 + (buf_dh[6] - '0') * 10 + (buf_dh[7] - '0');
+            uint8_t h  = (buf_dh[8] - '0') * 10 + (buf_dh[9] - '0');
+            uint8_t mn = (buf_dh[10] - '0') * 10 + (buf_dh[11] - '0');
+            
+            // Valida se a hora, minuto e a data existem de verdade
+            if (h < 24 && mn < 60 && a >= 2000 && m >= 1 && m <= 12 && d >= 1 && d <= Dias_Do_Mes(m, a)) {
+                dia = d;
+                mes = m;
+                ano = a;
+                hora = h;
+                minuto = mn;
+                segundo = 0;
+                relogio_meios = 0; // Reseta a contagem de meio segundo do timer
+                
+                lcd_clear();
+                lcd_set_cursor(0, 0);
+                lcd_print("Hora Atualizada!");
+            } else {
+                lcd_clear();
+                lcd_set_cursor(0, 0);
+                lcd_print("Valores invalidos!");
+            }
+            Esperar_Ms(1500);
+        }
         break; 
       case 1: 
         lcd_clear();
@@ -115,6 +152,6 @@ static void ADMPARK () {
     lcd_set_cursor(0, 0);
     lcd_print("Senha incorreta!");
     Esperar_Ms (2000); 
-    break; 
+    return; 
   }
 } 
