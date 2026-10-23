@@ -15,6 +15,26 @@ extern char lista_cartao_virtual[QTD_PLACAS][TAM_PLACA + 1];
 //como o valor muda, ele fica fora da função e usei QTD_PLACAS pq o numero é igual
 extern unsigned char saldo_cartao_virtual[QTD_PLACAS];
 
+static char eh_letra(char c)  { return c >= 'A' && c <= 'Z'; }
+static char eh_numero(char c) { return c >= '0' && c <= '9'; }
+
+//confere se a placa tem um formato válido: Denatran (ABC1234) ou Mercosul (BRA0S17)
+//as duas só mudam na 5ª posição, que pode ser número (Denatran) ou letra (Mercosul)
+char Placa_Formato_Valido(const char *Placa)
+{
+	if (strlen(Placa) != TAM_PLACA)
+		return 0;
+	if (!eh_letra(Placa[0]) || !eh_letra(Placa[1]) || !eh_letra(Placa[2]))
+		return 0;	// 3 letras
+	if (!eh_numero(Placa[3]))
+		return 0;	// 1 número
+	if (!eh_numero(Placa[4]) && !eh_letra(Placa[4]))
+		return 0;	// número (Denatran) ou letra (Mercosul)
+	if (!eh_numero(Placa[5]) || !eh_numero(Placa[6]))
+		return 0;	// 2 números
+	return 1;
+}
+
 char Placa_Preferencial(const char *Placa) //queria comentar que ja mudei esse nome 3x pq a cada momento chamo diferente ... especial, priritario, preferencial ...
 {
 	for (unsigned char i = 0; i < QTD_PLACAS; i++)

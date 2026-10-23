@@ -15,8 +15,12 @@
 //funções dos outros arquivos (todos os .c ficam como Compile no projeto)
 void Timer0_Iniciar(void);                  // Teclado 4x3.c
 void Delay1ms(void);                        // Teclado 4x3.c
+void DelayNms(unsigned int n);              // Teclado 4x3.c
 void Teclado_Iniciar(void);                 // Teclado 4x3.c
 unsigned char Teclado_Ler(void);            // Teclado 4x3.c
+void Teclado_Ler_Placa(char *placa, unsigned char col, unsigned char linha);   // Teclado 4x3.c
+char Placa_Formato_Valido(const char *Placa);   // Comparacao_Placas.c
+char Placa_Preferencial(const char *Placa);     // Comparacao_Placas.c
 void lcd_init(void);                        // Teste_Teclado_LCD.c
 void lcd_clear(void);                       // Teste_Teclado_LCD.c
 void lcd_set_cursor(unsigned char col, unsigned char linha);   // Teste_Teclado_LCD.c
@@ -157,7 +161,7 @@ tecla = SEM_TECLA;
 while(1){
     Mostrar_Data_Hora();
     tecla = Teclado_Ler();
-    while (tecla == SEM_TECLA){
+    while (tecla != '1'){       // só a tecla 1 começa o cadastro do carro, as outras são ignoradas
         //função de mostar o horario no lcd
         //a data e a hora chegam do sistema do professor pela serial ('S' 'H')
         if (Servidor_Processar()) {
@@ -166,16 +170,30 @@ while(1){
         tecla = Teclado_Ler();  // lê de novo, senão fica preso aqui pra sempre
     }
 
-    /*lcd "Digite a placa:"
-    escrever a placa, Multitap do teclado 
-    verificar se o padrão de placa esta correto e se a pss é idosa/pcd 
-    Pss_preferencial = 1; se idosa ou pcd 
-   */
+    //lcd "Digite a placa:", escrita com o multitap do teclado (* confirma, # apaga)
+    //repete até a placa ter um formato válido (ou ser o código do administrador)
+    while (1) {
+        lcd_clear();
+        lcd_set_cursor(0, 0);
+        lcd_print("Digite a placa:");
+        Teclado_Ler_Placa(placa, 0, 1);
+
+        if (strcmp(placa, "ADMPARK") == 0 || Placa_Formato_Valido(placa)) {
+            break;
+        }
+        lcd_clear();
+        lcd_set_cursor(0, 0);
+        lcd_print("Placa invalida!");
+        DelayNms(2000);
+    }
 
    if (strcmp(placa, "ADMPARK") == 0){     // string em C não compara com ==
-        //pedir senha e confirmar 
+        //pedir senha e confirmar
         //implementar as milhoes de funcionalidades ...
+        continue;               // por enquanto volta pra tela de inatividade (administrador não paga)
    }
+
+    Pss_preferencial = Placa_Preferencial(placa);   // 1 se idosa ou pcd
 
    //lcd "Quanto tempo:"
    // "0) 30 mins   1) 1h   2) 1h30    3)2h"
