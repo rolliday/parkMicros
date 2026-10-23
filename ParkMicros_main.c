@@ -37,6 +37,7 @@ void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
 unsigned int Relogio_Meios_Segundos(void);  // LED_Alerta.c (Timer1)
 unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
 unsigned char Dias_Do_Mes(unsigned char mes, unsigned int ano);                          // calendario.c
+bool verificar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a);                         // calendario.c 
 
 //data e hora: acertadas pelo sistema do professor ('S' 'H') e depois contadas pelo próprio Arduino
 static unsigned char dia, mes, hora, minuto, segundo;
@@ -712,7 +713,7 @@ while(1){
     // eu não sei como fazer a parte de contagem de tempo ... 
     // mas eu pensei em ser algo que conte e retorne uma flag, pra assim acionar uma condicional 
     atraso = 0; 
-    atraso = Contagem_Tempo_estacionado(); // Retorna 1 se o tempo estourou 
+    atraso = Contagem_Tempo_estacionado(); //só a ideia e retorna 1 se o tempo estourou 
     
     if (atraso == 1) {
         if (Pss_preferencial == 1) {
