@@ -39,9 +39,9 @@ bool adicionar_feriado_extra(uint8_t d, uint8_t m) {
     lista_feriados_extras[total_feriados_extras].dia = d;
     lista_feriados_extras[total_feriados_extras].mes = m;
     total_feriados_extras++;
-    return true;
+    return 1;
   }
-  return false;
+  return 0;
 }
 
 bool adicionar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a) {
@@ -50,18 +50,18 @@ bool adicionar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a) {
     lista_bloqueios[total_bloqueios].mes = m;
     lista_bloqueios[total_bloqueios].ano = a;
     total_bloqueios++;
-    return true;
+    return 1;
   }
-  return false;
+  return 0;
 }
 
 bool verificar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a) {
   for (uint8_t i = 0; i < total_bloqueios; i++) {
     if (lista_bloqueios[i].dia == d && lista_bloqueios[i].mes == m && lista_bloqueios[i].ano == a) {
-      return true;
+      return 1;
     }
   }
-  return false;
+  return 0;
 }
 // calcula se o ano é bissexto (true) ou não (false)
 // so eh valido para anos entre 1901 e 2099
