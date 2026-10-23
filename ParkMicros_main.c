@@ -124,7 +124,9 @@ static unsigned char Servidor_Processar(void) {
            {
                 unsigned char i;
                 for (i = 0; i < n && i < sizeof(dados_ocorrencia) - 1; i++) {
-                    if (!Serial_Esperar_Byte((unsigned char*)&dados_ocorrencia[i])) return 0;
+                    if (!Serial_Esperar_Byte((unsigned char*)&dados_ocorrencia[i])){ 
+                        return 0;
+                    }
                 }
                 dados_ocorrencia[i] = '\0';
             }
