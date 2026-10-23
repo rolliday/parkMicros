@@ -601,9 +601,11 @@ while(1){
         lcd_print("Digite a placa:");
         Teclado_Ler_Placa(placa, 0, 1);
 
-        if (strcmp(placa, "ADMPARK") == 0 || Placa_Formato_Valido(placa)) {
+        if (strcmp(placa, "ADMPARK") == 0) {
             ADMPARK (); 
-            continue; 
+            break; 
+        } if (Placa_Formato_Valido(placa)){
+            break; //mudei pq antes essa função dava condição de entrar no adm 
         }
         lcd_clear();
         lcd_set_cursor(0, 0);
@@ -611,9 +613,7 @@ while(1){
         DelayNms(2000);
     }
 
-   if (strcmp(placa, "ADMPARK") == 0){     // string em C não compara com ==
-        //pedir senha e confirmar
-        //implementar as milhoes de funcionalidades ...
+   if (strcmp(placa, "ADMPARK") == 0){ 
         continue;               // por enquanto volta pra tela de inatividade (administrador não paga)
    }
 
