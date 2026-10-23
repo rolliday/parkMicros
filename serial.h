@@ -7,7 +7,9 @@
 
 // ATENÇÃO: incluir em um .c só (a main), porque aqui dentro tem a interrupção de recepção
 
-#define SERIAL_BAUD 9600
+//o aplicativo do professor (PARKMICROS.exe) usa 19200 baud, 8 bits, paridade ímpar e 1 stop bit,
+//e não deixa mudar (está fixo no programa dele)
+#define SERIAL_BAUD 19200
 #define SERIAL_UBRR ((F_CPU / 16 / SERIAL_BAUD) - 1)
 
 //os bytes recebidos ficam guardados aqui pela interrupção até a main ler,
@@ -57,11 +59,11 @@ static int serial_putchar(char c, FILE *stream) {
 static FILE serial_saida = FDEV_SETUP_STREAM(serial_putchar, NULL, _FDEV_SETUP_WRITE);
 
 static void serial_init(void) {
-    UCSR0A = 0;                                 // o bootloader do Uno deixa a velocidade dobrada (U2X0) ligada: sem isso, 9600 vira 19200
+    UCSR0A = 0;
     UBRR0H = (unsigned char)(SERIAL_UBRR >> 8);
     UBRR0L = (unsigned char)SERIAL_UBRR;
     UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);  // recepção (com interrupção) e transmissão
-    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);     // 8 bits, sem paridade, 1 stop bit
+    UCSR0C = (1 << UPM01) | (1 << UPM00) | (1 << UCSZ01) | (1 << UCSZ00);   // 8 bits, paridade ímpar, 1 stop bit
     stdout = &serial_saida;
     sei();                                      // liga as interrupções no geral
 }
