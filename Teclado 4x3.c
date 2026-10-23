@@ -165,7 +165,7 @@ static const char *const letras_tecla[10] = {
 /*lê a placa com o multitap e vai mostrando no LCD a partir de (col, linha)
   - a mesma tecla de novo troca a letra (2 -> A, B, C, 2, A...)
   - 1 s sem apertar ou outra tecla confirma a letra
-  - # apaga a última letra, * termina (só quando tiver as 7)
+  - # apaga a última letra, * termina (mesmo com menos de 7; quem chama confere o formato)
   placa precisa ter espaço pra 8 (7 + '\0') */
 void Teclado_Ler_Placa(char *placa, unsigned char col, unsigned char linha) {
 	unsigned char n = 0;                    // letras já confirmadas
@@ -209,13 +209,9 @@ void Teclado_Ler_Placa(char *placa, unsigned char col, unsigned char linha) {
 		if (tecla == '*') {                     // termina
 			if (tecla_atual != SEM_TECLA) {     // confirma a letra pendente
 				n++;
-				tecla_atual = SEM_TECLA;
 			}
-			if (n == PLACA_TAM) {
-				placa[n] = '\0';
-				return;
-			}
-			continue;                           // ainda não tem as 7, ignora
+			placa[n] = '\0';
+			return;                             // com menos de 7, a main mostra "Placa invalida!"
 		}
 
 		//tecla de 0 a 9
