@@ -10,7 +10,7 @@ char lista_placas_especiais[5][8] = {
 	"IDS0090",
 	"PDE3400" };
 
-//lista do cartão virtual, que eu judei que se chamava catão azul 
+//lista do cartão virtual, que eu jurei que se chamava catão azul 
 char lista_cartao_virtual[5][8] = {
 	"WCC9850",
 	"PIN0C20",

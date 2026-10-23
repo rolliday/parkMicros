@@ -180,9 +180,77 @@ static void Mostrar_Data_Hora(void) {
     lcd_dois_digitos(minuto);
 }
 
+//tipo de cobrança: escolhe a linha da tabela de preços
+#define COBRA_UTIL      0      // segunda a sexta, das 8h às 18h
+#define COBRA_SABADO    1      // sábado, das 8h às 12h
+#define COBRA_IDOSO     2      // idoso/pcd, dentro do horário cobrado
+#define COBRA_GRATIS    3      // domingo, feriado ou fora do horário
+
+#define SEM_OPCAO      -1      // essa modalidade não pode ser escolhida
+
+//preço em centavos de cada modalidade: 0 = 30 min, 1 = 1h, 2 = 1h30, 3 = 2h, 4 = ilimitado
+static const int tabela_precos[4][5] = {
+    { 250, 350, 450, 600, SEM_OPCAO },     // segunda a sexta (limite de 2h)
+    { 150, 250, 400, 400, SEM_OPCAO },     // sábado (limite de 2h)
+    {   0, 200, 350, 350, 450       },     // idoso/pcd: 30 min grátis, até 2h 3,50, mais de 2h 4,50
+    {   0,   0,   0,   0,   0       },     // grátis
+};
+
+//data: o que o Calendario_Flag devolve (1 = dia de semana, 2 = sábado, outro = domingo/feriado)
+static unsigned char Tipo_Cobranca(unsigned char data, unsigned char preferencial) {
+    if (data == 1 && hora >= 8 && hora < 18) {
+        return preferencial ? COBRA_IDOSO : COBRA_UTIL;
+    }
+    if (data == 2 && hora >= 8 && hora < 12) {
+        return preferencial ? COBRA_IDOSO : COBRA_SABADO;
+    }
+    return COBRA_GRATIS;    // domingo, feriado ou fora do horário
+}
+
+//valor em centavos, ou SEM_OPCAO se essa modalidade não existe nesse tipo de cobrança
+static int Calcular_Valor(unsigned char cobranca, unsigned char modalidade) {
+    if (cobranca > COBRA_GRATIS || modalidade > 4) {
+        return SEM_OPCAO;
+    }
+    return tabela_precos[cobranca][modalidade];
+}
+
+//espera uma tecla; enquanto isso continua respondendo o sistema do sor e contando o tempo
+static unsigned char Esperar_Tecla(void) {
+    unsigned char tecla;
+
+    do {
+        Servidor_Processar();
+        Relogio_Atualizar();
+        tecla = Teclado_Ler();
+    } while (tecla == SEM_TECLA);
+    return tecla;
+}
+
+//"Valor: R$ 3,50" (ou "Gratis!") e embaixo como confirmar
+static void Mostrar_Valor(int valor) {
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    if (valor == 0) {
+        lcd_print("Gratis!");
+    } else {
+        lcd_print("Valor: R$ ");
+        if (valor >= 1000) {
+            lcd_putc('0' + valor / 1000);
+        }
+        lcd_putc('0' + (valor / 100) % 10);
+        lcd_putc(',');
+        lcd_dois_digitos(valor % 100);
+    }
+    lcd_set_cursor(0, 1);
+    lcd_print("* confirma");
+}
+
 int main (void){
 unsigned char tecla, estado, tempo, data, pagamento;
 unsigned char Pss_preferencial = 0;
+unsigned char cobranca;    // linha da tabela de preços (COBRA_...)
+int valor;                // em centavos
 char placa[8] = "";     // 7 letras/números + '\0'
 //definir as milhoes de variaveis
 lcd_init();
@@ -235,13 +303,6 @@ while(1){
 
     Pss_preferencial = Placa_Preferencial(placa);   // 1 se idosa ou pcd
 
-   //lcd "Quanto tempo:"
-   // "0) 30 mins   1) 1h   2) 1h30    3)2h"
-   //usei os valores baseados no valor de byte enviado para o professor 
-
-    tecla = Teclado_Ler();
-    tempo = tecla - '0';    // o teclado devolve o caractere '0'..'9', o switch usa o número 0..9
-
     //Calendário
     //Eu olhei tua função calendario, GIGANTESCA, mas minha ideia final ela virar uma flag 
     /*  1 - Dia de semana 
@@ -250,107 +311,39 @@ while(1){
     */
     Relogio_Atualizar();    // a data tem que estar em dia antes de ver o tipo de dia
     data = Calendario_Flag(dia, mes, ano); //nome só pra referencia
+    cobranca = Tipo_Cobranca(data, Pss_preferencial);
 
-    switch (data){
-        case 1: 
-            //dia de semana 
-            switch (tempo){
-                case 0: 
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                     
-                    }
-                    break; 
-                case 1: 
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break;
-                case 2: 
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break;
-                case 3:
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break;
-                default:
-                //lcd "Esse entrada é inválida! "
-                // fechar o sistema ???
-                    break;
-                }
-            break;
-        
-        case 2 :
-            //sabado 
-            switch (tempo){
-                case 0: 
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break; 
-                case 1: 
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break;
-                case 2: 
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break;
-                case 3:
-                    if (Pss_preferencial == 1){
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }else {
-                        // lcd "Valor: R$"
-                        //define byte de valor para sistema do sor 
-                    }
-                    break;
-                default:
-                //lcd "Esse estrada é inválida! "
-                // fechar o sistema ???
-                    break;
-                }
-            break; 
-       
-        default: 
-            //domingos e feriados 
-            // lcd "Valor: R$"
-            //define byte de valor para sistema do sor
-            break;
-    } //não sei outra forma de fazer isso
+   //lcd "Quanto tempo:"
+   // "0) 30 mins   1) 1h   2) 1h30    3)2h"
+   //usei os valores baseados no valor de byte enviado para o professor 
+   //4 = ilimitado, só pra idoso/pcd e quando é grátis (o resto tem limite de 2h)
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    lcd_print("0:30 1:1h 2:1h30");
+    lcd_set_cursor(0, 1);
+    if (Calcular_Valor(cobranca, 4) == SEM_OPCAO) {
+        lcd_print("3:2h");
+    } else {
+        lcd_print("3:2h  4:ilimit.");
+    }
+
+    do {
+        tecla = Esperar_Tecla();
+        tempo = tecla - '0';    // o teclado devolve o caractere '0'..'9', a tabela usa o número 0..4
+    } while (tecla < '0' || tecla > '4' || Calcular_Valor(cobranca, tempo) == SEM_OPCAO);   // ignora o que não é opção
+
+    //o valor fica em centavos, igual ao que vai pro sistema do sor (2,50 -> 250)
+    //a tabela substituiu os switch de antes (um switch por dia e por tempo)
+    valor = Calcular_Valor(cobranca, tempo);
+    Mostrar_Valor(valor);
+    while (Esperar_Tecla() != '*');      // * confirma
+
+    if (valor == 0) {
+        //grátis (idoso/pcd em 30 min, domingo, feriado ou fora do horário): não tem pagamento
+        //TODO: registrar no sistema do sor ('P' 'E' placa modalidade)
+        continue;
+    }
+
 
 
     //Lcd "Forma de pagamento:"
