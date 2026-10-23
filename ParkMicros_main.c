@@ -7,39 +7,31 @@
 #include <util/delay.h>
 #include <string.h>
 
-#define BOUNCE 10
-#define T0_RELOAD_1MS  6
-#define T0_PRESCALE_64 ((1 << CS01) | (1 << CS00))
+#define SEM_TECLA   0x00    // tem que ser o mesmo valor do Teclado 4x3.c
 
-#define NUM_LINHAS  4
-#define NUM_COLUNAS 3
-#define SEM_TECLA   0x00
-#define INVALIDO    2
+//funções dos outros arquivos (todos os .c ficam como Compile no projeto)
+void Timer0_Iniciar(void);                  // Teclado 4x3.c
+void Teclado_Iniciar(void);                 // Teclado 4x3.c
+unsigned char Teclado_Ler(void);            // Teclado 4x3.c
+void lcd_init(void);                        // Teste_Teclado_LCD.c
+void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
+unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
 
-/* ---------- TEMPORÁRIO: funções vazias só pra main compilar e rodar ----------
-   trocar pelas de verdade quando juntar os arquivos:
-     Iniciar_LCD / Teclado_Iniciar / Teclado_Ler -> Teste_Teclado_LCD.c
-     Calendario_Flag                             -> usar o calendario.c
-   enquanto forem vazias, o Teclado_Ler nunca acha tecla, então o programa fica
-   parado na tela de inatividade (mostrar o horário) */
-void Iniciar_LCD(void) {}
-void Teclado_Iniciar(void) {}
-void Timer0_Iniciar(void) {}
-void Timer1_Iniciar(void) {}
-unsigned char Teclado_Ler(void) { return SEM_TECLA; }
-unsigned char Calendario_Flag(void) { return 1; }   // 1 = dia de semana, 2 = sabado, outro = domingo/feriado
-/* ------------------------------------------------------------------------------ */
-
+//a main não roda quando algum teste está ligado (símbolo TESTE_... definido no projeto)
+#if !defined(TESTE_TECLADO) && !defined(TESTE_TECLADO_LCD) && !defined(TESTE_BOTOES) && \
+    !defined(TESTE_PLACAS) && !defined(TESTE_DADOS) && !defined(TESTE_CALENDARIO)
 int main (void){
 unsigned char tecla, estado, tempo, data, pagamento;
 unsigned char Pss_preferencial = 0;
 char placa[8] = "";     // 7 letras/números + '\0'
+unsigned char dia = 1, mes = 1;     // TODO: a data vem do sistema do professor pela serial ('S' 'H')
+unsigned int ano = 2026;
 //definir as milhoes de variaveis
-Iniciar_LCD();
+lcd_init();
 Teclado_Iniciar();
 
 Timer0_Iniciar();
-Timer1_Iniciar();
+LED_Alerta_Iniciar();
 
 tecla = SEM_TECLA;
 while(1){
@@ -74,7 +66,7 @@ while(1){
         2 - sabado 
         default - domingos/feriados
     */
-    data = Calendario_Flag(); //nome só pra referencia
+    data = Calendario_Flag(dia, mes, ano); //nome só pra referencia
 
     switch (data){
         case 1: 
@@ -212,3 +204,4 @@ while(1){
     
 }
 }
+#endif

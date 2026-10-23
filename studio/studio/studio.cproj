@@ -128,34 +128,34 @@
       <SubType>compile</SubType>
       <Link>serial.h</Link>
     </Compile>
-    <None Include="..\..\Botoes_Pagamento_Dinheiro.c">
+    <Compile Include="..\..\Botoes_Pagamento_Dinheiro.c">
       <SubType>compile</SubType>
       <Link>Botoes_Pagamento_Dinheiro.c</Link>
-    </None>
-    <None Include="..\..\calendario.c">
+    </Compile>
+    <Compile Include="..\..\calendario.c">
       <SubType>compile</SubType>
       <Link>calendario.c</Link>
-    </None>
-    <None Include="..\..\Comparacao_Placas.c">
+    </Compile>
+    <Compile Include="..\..\Comparacao_Placas.c">
       <SubType>compile</SubType>
       <Link>Comparacao_Placas.c</Link>
-    </None>
-    <None Include="..\..\Dados_Placas_Cartoes.c">
+    </Compile>
+    <Compile Include="..\..\Dados_Placas_Cartoes.c">
       <SubType>compile</SubType>
       <Link>Dados_Placas_Cartoes.c</Link>
-    </None>
-    <None Include="..\..\LED_Alerta.c">
+    </Compile>
+    <Compile Include="..\..\LED_Alerta.c">
       <SubType>compile</SubType>
       <Link>LED_Alerta.c</Link>
-    </None>
-    <None Include="..\..\Teclado 4x3.c">
+    </Compile>
+    <Compile Include="..\..\Teclado 4x3.c">
       <SubType>compile</SubType>
       <Link>Teclado 4x3.c</Link>
-    </None>
-    <None Include="..\..\Teste_Teclado_LCD.c">
+    </Compile>
+    <Compile Include="..\..\Teste_Teclado_LCD.c">
       <SubType>compile</SubType>
       <Link>Teste_Teclado_LCD.c</Link>
-    </None>
+    </Compile>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

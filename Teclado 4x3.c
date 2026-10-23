@@ -18,7 +18,9 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
-#include "serial.h"
+
+// as funções de tempo e o Debouncer daqui também são usadas pelo Teste_Teclado_LCD.c,
+// pelo Botoes_Pagamento_Dinheiro.c e pela main (cada uma existe só aqui)
 
 #define BOUNCE 10
 #define T0_RELOAD_1MS  6
@@ -139,8 +141,10 @@ unsigned char Teclado_Ler(void) {
 }
 
 // main de teste: mostra no Monitor Serial (9600) cada tecla apertada
-// compilar com -DSEM_MAIN pra usar só as funções junto com outro arquivo
-#ifndef SEM_MAIN
+// pra rodar: definir o símbolo TESTE_TECLADO no projeto
+#ifdef TESTE_TECLADO
+#include "serial.h"
+
 int main(void) {
 	unsigned char tecla;
 

@@ -2,11 +2,9 @@
 #define F_CPU 16000000UL
 #endif
 
-#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <avr/pgmspace.h>   // PROGMEM: guarda tabelas na flash em vez da RAM
-#include "serial.h"         // o printf sai pela serial (Monitor Serial em 9600)
 
 // dias de cada mes (ano nao bissexto), guardado so na flash
 const uint8_t meses[12] PROGMEM = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -196,8 +194,31 @@ bool feriado(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
   }
 }
 
-// compilar com -DSEM_MAIN pra usar so as funcoes junto com outro arquivo
-#ifndef SEM_MAIN
+// a flag que a main usa pra escolher a tabela de precos:
+// 1 = dia de semana, 2 = sabado, 0 = domingo ou feriado (o default do switch da main)
+uint8_t Calendario_Flag(uint8_t dia, uint8_t mes, uint16_t ano) {
+  bool flag_bissexto = bissexto(ano);
+
+  if (feriado(dia, mes, ano, flag_bissexto)) {
+    return 0;
+  }
+
+  switch (dia_da_semana(dia, mes, ano, flag_bissexto)) {
+    case 0:       // sabado
+      return 2;
+    case 1:       // domingo
+      return 0;
+    default:      // segunda a sexta
+      return 1;
+  }
+}
+
+// main de teste: mostra no Monitor Serial (9600) se a data eh feriado e o dia da semana
+// pra rodar: definir o simbolo TESTE_CALENDARIO no projeto
+#ifdef TESTE_CALENDARIO
+#include <stdio.h>
+#include "serial.h"         // o printf sai pela serial (Monitor Serial em 9600)
+
 int main(void) {
   serial_init();
   uint8_t dia = 3, mes = 3;
@@ -233,8 +254,6 @@ int main(void) {
       break;
   }
 
-  while (1);  // no microcontrolador o main nao pode terminar
+  while (1);
 }
 #endif
-
-// adicionar testes

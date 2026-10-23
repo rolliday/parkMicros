@@ -8,20 +8,17 @@
 #include <stdint.h>
 
 /* pinagem
-    teclado: pinos 1 a 7 do teclado nos pinos 4 a 10 do Arduino (igual ao Teclado 4x3.c)
-      linhas  -> PD4..PD7 (pinos 4 a 7)
-      colunas -> PB0..PB2 (pinos 8 a 10)
+    teclado: está no Teclado 4x3.c (pinos 4 a 10 do Arduino)
     LCD com módulo I2C (PCF8574):
       SDA -> A4 (PC4)
       SCL -> A5 (PC5)
 */
-  #define COLUNA_DDR     DDRB
-  #define COLUNA_PORT    PORTB
-  #define COLUNA_PIN     PINB
-  #define COLUNA_BASE    PB0
-  #define LINHA_DDR      DDRD
-  #define LINHA_PORT     PORTD
-  #define LINHA_BASE     PD4
+
+//funções do Teclado 4x3.c que este arquivo usa
+void Timer0_Iniciar(void);
+void DelayNms(unsigned int n);
+void Teclado_Iniciar(void);
+unsigned char Teclado_Ler(void);
 
 //endereço do módulo I2C: depende do chip, o lcd_init testa os dois
   #define LCD_I2C_END_1  0x27       // PCF8574T, o mais comum
@@ -33,20 +30,11 @@
   #define LCD_E          0x04       // P2
   #define LCD_LUZ        0x08       // P3, luz de fundo
 
-#define COLUNA_MASCARA ((1 << COLUNA_BASE) | (1 << (COLUNA_BASE + 1)) | (1 << (COLUNA_BASE + 2)))
-#define LINHA_MASCARA  ((1 << LINHA_BASE)  | (1 << (LINHA_BASE + 1))  | (1 << (LINHA_BASE + 2)) | (1 << (LINHA_BASE + 3)))
-
-#define BOUNCE          10
-#define T0_RELOAD_1MS   6
-#define T0_PRESCALE_64  ((1 << CS01) | (1 << CS00))
 #define T2_OCR_40US     79
 #define T2_PRESCALE_8   (1 << CS21)
 
-#define NUM_LINHAS      4
-#define NUM_COLUNAS     3
-#define SEM_TECLA       0x00
-#define INVALIDO        2          
-#define TECLA_FIM       '*'  
+#define SEM_TECLA       0x00       // tem que ser o mesmo valor do Teclado 4x3.c
+#define TECLA_FIM       '*'
 
 #define CARTAO_DIGITOS  6
 #define SENHA_DIGITOS   5
@@ -62,36 +50,10 @@
 #define LCD_FUNC_4BIT_2L 0x28
 #define LCD_SET_DDRAM    0x80
 
-static unsigned char mapa_teclas[NUM_LINHAS][NUM_COLUNAS] =
-{
-    { '1', '2', '3' },
-    { '4', '5', '6' },
-    { '7', '8', '9' },
-    { '*', '0', '#' }
-};
-
-void Timer0_Iniciar(void) {
-    TCCR0A = 0x00;
-    TCCR0B = T0_PRESCALE_64;
-}
-
 void Timer2_Iniciar(void) {
     TCCR2A = (1 << WGM21);          
     TCCR2B = T2_PRESCALE_8;
     OCR2A  = T2_OCR_40US;
-}
-
-void Delay1ms(void) {
-    TCNT0 = T0_RELOAD_1MS;
-    TIFR0 = (1 << TOV0);
-    while ((TIFR0 & (1 << TOV0)) == 0);
-    TIFR0 = (1 << TOV0);
-}
-
-void DelayNms(unsigned int n) {
-    while (n--) {
-        Delay1ms();
-    }
 }
 
 void Delay40us(void) {
@@ -104,66 +66,6 @@ void Delay40us_x(unsigned char n) {
     while (n--) {
         Delay40us();
     }
-}
-
-//usei o teclado que fiz antes 
-unsigned char Debouncer(unsigned char pino) {
-    unsigned char count = 0;
-    unsigned char anterior = INVALIDO;
-    unsigned char atual;
-
-    while (1) {
-        Delay1ms();
-        atual = (COLUNA_PIN >> pino) & 0x01;
-        if (atual == anterior) {
-            count++;
-        } else {
-            count = 0;
-        }
-        if (count == BOUNCE) {
-            return atual;
-        }
-        anterior = atual;
-    }
-}
-
-void Teclado_Iniciar(void) {
-    COLUNA_DDR  &= ~COLUNA_MASCARA;
-    COLUNA_PORT |=  COLUNA_MASCARA;
-
-    LINHA_DDR  |= LINHA_MASCARA;
-    LINHA_PORT |= LINHA_MASCARA;
-
-    Timer0_Iniciar();
-}
-
-unsigned char Teclado_Ler(void) {
-    unsigned char linha, coluna, pino;
-    unsigned char tecla = SEM_TECLA;
-
-    for (linha = 0; linha < NUM_LINHAS; linha++) {
-        LINHA_PORT &= ~(1 << (LINHA_BASE + linha));   
-        _delay_us(5);                                 
-
-        for (coluna = 0; coluna < NUM_COLUNAS; coluna++) {
-            pino = COLUNA_BASE + coluna;
-
-            if ((COLUNA_PIN & (1 << pino)) == 0) {
-                if (Debouncer(pino) == 0) {
-                    tecla = mapa_teclas[linha][coluna];
-                    while ((COLUNA_PIN & (1 << pino)) == 0);  
-                    DelayNms(BOUNCE);
-                    break;
-                }
-            }
-        }
-
-        LINHA_PORT |= (1 << (LINHA_BASE + linha)); 
-        if (tecla != SEM_TECLA) {
-            break;
-        }
-    }
-    return tecla;
 }
 
 //I2C (TWI) do ATmega, só escrita, que é o que o LCD precisa
@@ -247,6 +149,8 @@ void lcd_set_cursor(unsigned char col, unsigned char linha) {
 }
 
 void lcd_init(void) {
+    Timer0_Iniciar();               // DelayNms
+    Timer2_Iniciar();               // Delay40us
     TWI_Iniciar();
     DelayNms(50);                   /* > 40 ms após Vcc estável */
 
@@ -319,6 +223,9 @@ void Leitura_Cartao_Senha(char *cartao, char *senha) {
     Campo_Ler(senha,  SENHA_DIGITOS,  1, SENHA_COL,  1);
 }
 
+// main de teste: cartão e senha no LCD
+// pra rodar: definir o símbolo TESTE_TECLADO_LCD no projeto
+#ifdef TESTE_TECLADO_LCD
 int main(void) {
     char cartao[CARTAO_DIGITOS + 1];
     char senha[SENHA_DIGITOS + 1];
@@ -337,3 +244,4 @@ int main(void) {
         DelayNms(2000);
     }
 }
+#endif

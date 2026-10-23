@@ -2,8 +2,6 @@
 #define F_CPU 16000000UL
 #endif
 
-#include "serial.h"
-
 //placas de pessoas idosas e pcds
 char lista_placas_especiais[5][8] = {
 	"IOS0098",
@@ -28,8 +26,10 @@ unsigned char saldo_cartao_virtual[5] = {
 	20 };
 
 // main de teste: imprime as listas no Monitor Serial (9600) pra conferir os dados
-// compilar com -DSEM_MAIN pra usar só os dados junto com outro arquivo
-#ifndef SEM_MAIN
+// pra rodar: definir o símbolo TESTE_DADOS no projeto
+#ifdef TESTE_DADOS
+#include "serial.h"
+
 int main(void) {
 	serial_init();
 
@@ -43,6 +43,6 @@ int main(void) {
 		printf("  %s: %d\n", lista_cartao_virtual[i], saldo_cartao_virtual[i]);
 	}
 
-	while (1);	// no microcontrolador o main não pode terminar
+	while (1);
 }
 #endif
