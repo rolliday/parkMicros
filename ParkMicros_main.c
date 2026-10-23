@@ -52,6 +52,9 @@ static unsigned char resposta_se = 0;
 //resposta do pagamento com cartão ('S' 'P' + 'S', 'F' ou 'I'); 0 enquanto não chegou
 static unsigned char resposta_sp = 0;
 
+//vira 1 quando chega a resposta 'S' 'I' do comprovante
+static unsigned char resposta_si = 0;
+
 //espera um byte da serial por até SERIAL_ESPERA_MS; retorna 1 se chegou
 static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
     for (unsigned char t = 0; t < SERIAL_ESPERA_MS; t++) {
@@ -72,6 +75,7 @@ static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
    e as respostas das mensagens que o Parkmicros manda:
      'S' 'E'                                -> registro do estacionamento aceito (resposta_se = 1)
      'S' 'P' 'S'/'F'/'I'                    -> resposta do pagamento com cartão (resposta_sp)
+     'S' 'I'                                -> comprovante impresso (resposta_si = 1)
    retorna 1 quando a data e hora mudaram (pra atualizar o LCD) */
 static unsigned char Servidor_Processar(void) {
     unsigned char tipo, n, dado;
@@ -137,6 +141,10 @@ static unsigned char Servidor_Processar(void) {
 
         case 'E':
             resposta_se = 1;        // resposta do 'P' 'E' (não precisa responder de volta)
+            return 0;
+
+        case 'I':
+            resposta_si = 1;        // resposta do 'P' 'I'
             return 0;
 
         case 'P':
@@ -321,9 +329,82 @@ static void Registrar_Estacionamento(const char *placa, unsigned char modalidade
     Esperar_Ms(2000);
 }
 
+//textos do comprovante (mesma ordem das modalidades e das formas de pagamento)
+static const char *const nome_tempo[5] = { "30 min", "1h", "1h30", "2h", "ilimitado" };
+static const unsigned char minutos_tempo[4] = { 30, 60, 90, 120 };
+static const char *const nome_pagamento[4] = { "", "dinheiro", "cartao", "cartao azul" };
+
+/* pergunta se a pessoa quer o comprovante e, se quiser, manda pro sistema do sor imprimir:
+   'P' 'I' n(2 bytes) + n bytes de texto; o n vai com o byte mais significativo primeiro,
+   e o aplicativo responde 'S' 'I'
+   forma: 0 = grátis, 1 = dinheiro, 2 = cartão, 3 = cartão azul */
+static void Imprimir_Comprovante(const char *placa, unsigned char modalidade, int valor, unsigned char forma) {
+    char recibo[200];
+    int n;
+    int i;
+    unsigned int saida;
+    unsigned int espera;
+
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    lcd_print("Comprovante?");
+    lcd_set_cursor(0, 1);
+    lcd_print("1:Sim  2:Nao");
+    do {
+        i = Esperar_Tecla();
+    } while (i != '1' && i != '2');
+    if (i == '2') {
+        return;
+    }
+
+    Relogio_Atualizar();
+    //começa com um espaço porque a janela do aplicativo do professor sempre pula o 1o caractere
+    //(sem isso aparecia "ARKMICROS")
+    n = snprintf(recibo, sizeof recibo,
+                 " PARKMICROS\r\nPlaca: %s\r\nEntrada: %02u/%02u/%04u %02u:%02u\r\nTempo: %s\r\n",
+                 placa, dia, mes, ano, hora, minuto, nome_tempo[modalidade]);
+    if (modalidade < 4) {                   // ilimitado não tem hora de saída
+        saida = hora * 60 + minuto + minutos_tempo[modalidade];
+        n += snprintf(recibo + n, sizeof recibo - n, "Saida ate: %02u:%02u\r\n",
+                      (saida / 60) % 24, saida % 60);
+    }
+    if (valor == 0) {
+        n += snprintf(recibo + n, sizeof recibo - n, "Valor: gratis\r\n");
+    } else {
+        n += snprintf(recibo + n, sizeof recibo - n, "Valor: R$ %d,%02d\r\nPagamento: %s\r\n",
+                      valor / 100, valor % 100, nome_pagamento[forma]);
+    }
+
+    resposta_si = 0;
+    serial_enviar('P');
+    serial_enviar('I');
+    serial_enviar(n >> 8);                  // tamanho do texto, 2 bytes
+    serial_enviar(n & 0xFF);
+    for (i = 0; i < n; i++) {
+        serial_enviar(recibo[i]);
+    }
+
+    for (espera = 0; espera < 2000 && !resposta_si; espera++) {
+        Servidor_Processar();       // é aqui que chega o 'S' 'I'
+        Relogio_Atualizar();
+        Delay1ms();
+    }
+
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    if (resposta_si) {
+        lcd_print("Comprovante");
+        lcd_set_cursor(0, 1);
+        lcd_print("impresso!");
+    } else {
+        lcd_print("Sistema nao");
+        lcd_set_cursor(0, 1);
+        lcd_print("respondeu");
+    }
+    Esperar_Ms(2000);
+}
+
 //pagamento em dinheiro: as moedas são os botões (1 real no pino 12, 50 centavos no pino 11)
-//não tem troco: tem que pagar exato, então a moeda que passa do que falta é recusada
-//(todos os valores da tabela são múltiplos de 0,50, então sempre dá pra pagar exato)
 //mostra quanto falta a cada moeda
 static void Pagar_Dinheiro(int valor) {
     int pago = 0;
@@ -343,7 +424,7 @@ static void Pagar_Dinheiro(int valor) {
         if (moeda == 0) {
             continue;
         }
-        if (pago + moeda > valor) {         // passaria do valor: devolve a moeda
+        if (pago + moeda > valor) {
             lcd_set_cursor(0, 0);
             lcd_print("Moeda recusada  ");
             Esperar_Ms(1000);
@@ -352,7 +433,7 @@ static void Pagar_Dinheiro(int valor) {
             continue;
         }
         pago += moeda;
-        lcd_set_cursor(7, 1);               // depois do "Falta: "
+        lcd_set_cursor(7, 1);
         lcd_reais(valor - pago);
     }
 }
@@ -569,6 +650,7 @@ while(1){
     if (valor == 0) {
         //grátis (idoso/pcd em 30 min, domingo, feriado ou fora do horário): não tem pagamento
         Registrar_Estacionamento(placa, tempo);
+        Imprimir_Comprovante(placa, tempo, valor, 0);
         continue;
     }
 
@@ -620,6 +702,7 @@ while(1){
 
     //lcd "Pagamento finalizado!"
     Registrar_Estacionamento(placa, tempo);
+    Imprimir_Comprovante(placa, tempo, valor, pagamento);
 
     //inicio da contagem do tempo, não sei como fazer isso ainda 
     //tolerância de 3 mins
