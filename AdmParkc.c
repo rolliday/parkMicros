@@ -79,7 +79,7 @@ static void ADMPARK () {
         lcd_print("Ocorrencia :");
         lcd_set_cursor(0, 1);
         lcd_print(dados_ocorrencia);
-        //peguei da ia ....
+        //saida de ia, tentei adaptar ....
         //cuidar que eu mexi no teu servidor processar, se der errado é uma modificação no caso V 
         break; 
       case 2: { // Adicionar feriados especiais 
