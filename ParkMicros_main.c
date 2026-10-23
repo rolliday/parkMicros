@@ -6,36 +6,163 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <string.h>
+#include "serial.h"         // recepção e envio pela serial (só a main inclui, tem a interrupção)
 
 #define SEM_TECLA   0x00    // tem que ser o mesmo valor do Teclado 4x3.c
 
+#define SERIAL_ESPERA_MS 100    // quanto tempo espera cada byte de uma mensagem antes de desistir
+
 //funções dos outros arquivos (todos os .c ficam como Compile no projeto)
 void Timer0_Iniciar(void);                  // Teclado 4x3.c
+void Delay1ms(void);                        // Teclado 4x3.c
 void Teclado_Iniciar(void);                 // Teclado 4x3.c
 unsigned char Teclado_Ler(void);            // Teclado 4x3.c
 void lcd_init(void);                        // Teste_Teclado_LCD.c
+void lcd_clear(void);                       // Teste_Teclado_LCD.c
+void lcd_set_cursor(unsigned char col, unsigned char linha);   // Teste_Teclado_LCD.c
+void lcd_putc(char c);                      // Teste_Teclado_LCD.c
+void lcd_print(const char *s);              // Teste_Teclado_LCD.c
 void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
 unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
+
+//data e hora que chegam do sistema do professor ('S' 'H')
+static unsigned char dia, mes, hora, minuto;
+static unsigned int ano;
+static unsigned char hora_recebida = 0;     // 0 enquanto não chegou nenhuma 'S' 'H'
+
+//número do cartão que chega do sistema do professor ('S' 'C'), 6 dígitos + '\0'
+static char cartao_inserido[7] = "";
+
+//espera um byte da serial por até SERIAL_ESPERA_MS; retorna 1 se chegou
+static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
+    for (unsigned char t = 0; t < SERIAL_ESPERA_MS; t++) {
+        if (serial_disponivel()) {
+            *dado = serial_ler();
+            return 1;
+        }
+        Delay1ms();
+    }
+    return 0;
+}
+
+/* trata as mensagens que o sistema do professor manda sozinho (protocolo do Parkmicros)
+   e responde cada uma, senão o aplicativo acusa falha:
+     'S' 'H' dia mes ano(2 bytes) hora min  -> acerta data e hora, responde 'P' 'H'
+     'S' 'V' n + n bytes (via e placas)     -> só lê, responde 'P' 'V'
+     'S' 'C' "123456"                       -> guarda o cartão, responde 'P' 'C'
+   retorna 1 quando a data e hora mudaram (pra atualizar o LCD) */
+static unsigned char Servidor_Processar(void) {
+    unsigned char tipo, n, dado;
+    unsigned char dados[6];
+
+    if (!serial_disponivel()) {
+        return 0;
+    }
+    if (serial_ler() != 'S') {
+        return 0;
+    }
+    if (!Serial_Esperar_Byte(&tipo)) {
+        return 0;
+    }
+
+    switch (tipo) {
+        case 'H':
+            for (n = 0; n < 6; n++) {
+                if (!Serial_Esperar_Byte(&dados[n])) {
+                    return 0;   // mensagem pela metade, ignora
+                }
+            }
+            dia    = dados[0];
+            mes    = dados[1];
+            ano    = ((unsigned int)dados[2] << 8) | dados[3];
+            if (ano < 2000 || ano > 2099) {
+                ano = ((unsigned int)dados[3] << 8) | dados[2];
+            }
+            hora   = dados[4];
+            minuto = dados[5];
+            hora_recebida = 1;
+            serial_enviar('P');
+            serial_enviar('H');
+            return 1;
+
+        case 'V':
+            if (!Serial_Esperar_Byte(&n)) {
+                return 0;
+            }
+            while (n--) {
+                if (!Serial_Esperar_Byte(&dado)) {
+                    return 0;
+                }
+            }
+            serial_enviar('P');
+            serial_enviar('V');
+            return 0;
+
+        case 'C':
+            for (n = 0; n < 6; n++) {
+                if (!Serial_Esperar_Byte(&dado)) {
+                    return 0;
+                }
+                cartao_inserido[n] = dado;
+            }
+            cartao_inserido[6] = '\0';
+            serial_enviar('P');
+            serial_enviar('C');
+            return 0;
+
+        default:
+            return 0;
+    }
+}
+
+static void lcd_dois_digitos(unsigned char n) {
+    lcd_putc('0' + n / 10);
+    lcd_putc('0' + n % 10);
+}
+
+//tela de inatividade: data na linha de cima e hora na de baixo
+static void Mostrar_Data_Hora(void) {
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    if (!hora_recebida) {
+        lcd_print("Aguardando hora");
+        return;
+    }
+    lcd_dois_digitos(dia);
+    lcd_putc('/');
+    lcd_dois_digitos(mes);
+    lcd_putc('/');
+    lcd_dois_digitos(ano / 100);
+    lcd_dois_digitos(ano % 100);
+
+    lcd_set_cursor(0, 1);
+    lcd_dois_digitos(hora);
+    lcd_putc(':');
+    lcd_dois_digitos(minuto);
+}
 
 int main (void){
 unsigned char tecla, estado, tempo, data, pagamento;
 unsigned char Pss_preferencial = 0;
 char placa[8] = "";     // 7 letras/números + '\0'
-unsigned char dia = 1, mes = 1;     // TODO: a data vem do sistema do professor pela serial ('S' 'H')
-unsigned int ano = 2026;
 //definir as milhoes de variaveis
 lcd_init();
 Teclado_Iniciar();
+serial_init();
 
 Timer0_Iniciar();
 LED_Alerta_Iniciar();
 
 tecla = SEM_TECLA;
 while(1){
+    Mostrar_Data_Hora();
     tecla = Teclado_Ler();
     while (tecla == SEM_TECLA){
         //função de mostar o horario no lcd
-        //a gente pega de comunicação serial com o computador do professor??
+        //a data e a hora chegam do sistema do professor pela serial ('S' 'H')
+        if (Servidor_Processar()) {
+            Mostrar_Data_Hora();
+        }
         tecla = Teclado_Ler();  // lê de novo, senão fica preso aqui pra sempre
     }
 
