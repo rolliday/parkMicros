@@ -2,6 +2,8 @@
 #define F_CPU 16000000UL
 #endif
 
+#define MAX_ITENS_CUSTOM 5
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <avr/pgmspace.h>   // PROGMEM: guarda tabelas na flash em vez da RAM
@@ -14,6 +16,53 @@ typedef struct {
   uint8_t mes;
 } Feriado_dia_mes;
 
+typedef struct {
+  uint8_t dia;
+  uint8_t mes;
+} Feriado_Extra;
+
+typedef struct {
+  uint8_t dia;
+  uint8_t mes;
+  uint16_t ano;
+} Data_Bloqueada;
+
+static Feriado_Extra lista_feriados_extras[MAX_ITENS_CUSTOM];
+static uint8_t total_feriados_extras = 0;
+
+static Data_Bloqueada lista_bloqueios[MAX_ITENS_CUSTOM];
+static uint8_t total_bloqueios = 0;
+
+// Funções para gerenciar e verificar
+bool adicionar_feriado_extra(uint8_t d, uint8_t m) {
+  if (total_feriados_extras < MAX_ITENS_CUSTOM) {
+    lista_feriados_extras[total_feriados_extras].dia = d;
+    lista_feriados_extras[total_feriados_extras].mes = m;
+    total_feriados_extras++;
+    return true;
+  }
+  return false;
+}
+
+bool adicionar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a) {
+  if (total_bloqueios < MAX_ITENS_CUSTOM) {
+    lista_bloqueios[total_bloqueios].dia = d;
+    lista_bloqueios[total_bloqueios].mes = m;
+    lista_bloqueios[total_bloqueios].ano = a;
+    total_bloqueios++;
+    return true;
+  }
+  return false;
+}
+
+bool verificar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a) {
+  for (uint8_t i = 0; i < total_bloqueios; i++) {
+    if (lista_bloqueios[i].dia == d && lista_bloqueios[i].mes == m && lista_bloqueios[i].ano == a) {
+      return true;
+    }
+  }
+  return false;
+}
 // calcula se o ano é bissexto (true) ou não (false)
 // so eh valido para anos entre 1901 e 2099
 bool bissexto(uint16_t a) {
@@ -180,6 +229,13 @@ static bool pascoa(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
 
 // verifica se hoje eh feriado ou nao
 bool feriado(uint8_t dia, uint8_t mes, uint16_t ano, bool flag_bissexto) {
+  
+  for (uint8_t i = 0; i < total_feriados_extras; i++) {
+    if (dia == lista_feriados_extras[i].dia && mes == lista_feriados_extras[i].mes) {
+      return 1; // Considera feriado (tarifa zero)
+    }
+  }
+  
   if (pascoa(dia, mes, ano, flag_bissexto)) { // Chamada para calcular os feriados dependentes da pascoa
     return 1;
   } else if (dia == 1 && mes == 1) {          // Ano Novo
