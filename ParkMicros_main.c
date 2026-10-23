@@ -601,21 +601,20 @@ while(1){
         lcd_print("Digite a placa:");
         Teclado_Ler_Placa(placa, 0, 1);
 
-        if (strcmp(placa, "ADMPARK") == 0) {
-            ADMPARK (); 
-            break; 
-        } if (Placa_Formato_Valido(placa)){
-            break; //mudei pq antes essa função dava condição de entrar no adm 
+        if (strcmp(placa, "ADMPARK") == 0 || Placa_Formato_Valido(placa)) {
+            break; // Sai do loop de digitação da placa
         }
+        
         lcd_clear();
         lcd_set_cursor(0, 0);
         lcd_print("Placa invalida!");
         DelayNms(2000);
     }
 
-   if (strcmp(placa, "ADMPARK") == 0){ 
-        continue;               // por enquanto volta pra tela de inatividade (administrador não paga)
-   }
+    if (strcmp(placa, "ADMPARK") == 0) {
+        ADMPARK(); 
+        continue;     // Retorna para a tela inicial 
+    }
 
     if (verificar_data_bloqueada(dia, mes, ano)) {
         lcd_clear();
