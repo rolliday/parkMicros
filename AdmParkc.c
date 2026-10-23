@@ -44,7 +44,7 @@ static void ADMPARK () {
         //peguei da ia ....
         //cuidar que eu mexi no teu servidor processar, se der errado é uma modificação no caso V 
         break; 
-      case 2: { // Adicionar feriados especiais (formato DDMM)
+      case 2: { // Adicionar feriados especiais 
         char buf_fer[5];
         lcd_clear();
         lcd_set_cursor(0, 0);
@@ -57,7 +57,7 @@ static void ADMPARK () {
             uint8_t d = (buf_fer[0] - '0') * 10 + (buf_fer[1] - '0');
             uint8_t m = (buf_fer[2] - '0') * 10 + (buf_fer[3] - '0');
             
-            if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+            if (m >= 1 && m <= 12 && d >= 1 && d <= Dias_Do_Mes(m, ano)) {
                 if (adicionar_feriado_extra(d, m)) {
                     lcd_clear();
                     lcd_set_cursor(0, 0);
@@ -76,7 +76,7 @@ static void ADMPARK () {
         }
         break;
       }  
-      case 3: { // Bloquear datas (formato DDMMAAAA)
+      case 3: { // Bloquear datas 
         char buf_bloq[9];
         lcd_clear();
         lcd_set_cursor(0, 0);
@@ -90,7 +90,7 @@ static void ADMPARK () {
             uint8_t m  = (buf_bloq[2] - '0') * 10 + (buf_bloq[3] - '0');
             uint16_t a = (buf_bloq[4] - '0') * 1000 + (buf_bloq[5] - '0') * 100 + (buf_bloq[6] - '0') * 10 + (buf_bloq[7] - '0');
             
-            if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 2000) {
+            if (a >= 2000 && m >= 1 && m <= 12 && d >= 1 && d <= Dias_Do_Mes(m, a)) {
                 if (adicionar_data_bloqueada(d, m, a)) {
                     lcd_clear();
                     lcd_set_cursor(0, 0);
