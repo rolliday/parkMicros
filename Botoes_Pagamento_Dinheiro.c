@@ -17,7 +17,7 @@ unsigned char Debouncer(unsigned char pino);
 #define BOTAO_DDR       DDRB
 
 #define PINO_1REAL      PB4     // pino 12 do Arduino
-#define PINO_50CENT     PB5     // pino 13 do Arduino
+#define PINO_50CENT     PB3     // pino 11 do Arduino (o 13 tem o LED da placa e não funcionou)
 
 #define VALOR_1REAL     100     
 #define VALOR_50CENT    50      
@@ -31,31 +31,41 @@ void botoes_init(void) {
     Timer0_Iniciar();                                           // o Debouncer usa o Delay1ms (Timer0)
 }
 
-int botoes_pagamento_em_dinheiro(int valor_a_pagar)
+//lê os botões uma vez só e devolve a moeda que acabou de entrar (VALOR_1REAL, VALOR_50CENT) ou 0
+//não fica presa esperando, então quem chama pode mostrar no LCD quanto falta a cada moeda
+int botoes_ler_moeda(void)
 {
     static char botao_1real  = 0;   // 1 = botão ainda pressionado
     static char botao_50cent = 0;
+    int moeda = 0;
+
+    if (Debouncer(PINO_1REAL) == PRESSIONADO) {
+        if (!botao_1real) {            // início do aperto -> conta uma vez
+            botao_1real = 1;
+            moeda += VALOR_1REAL;
+          }
+        } else {
+        botao_1real = 0;               // soltou, pode contar de novo
+        }
+    if (Debouncer(PINO_50CENT) == PRESSIONADO) {
+        if (!botao_50cent) {
+            botao_50cent = 1;
+            moeda += VALOR_50CENT;
+            }
+        } else {
+            botao_50cent = 0;
+        }
+    return moeda;
+}
+
+int botoes_pagamento_em_dinheiro(int valor_a_pagar)
+{
     int valor_pago = 0;
 
     while (valor_pago < valor_a_pagar){
-        if (Debouncer(PINO_1REAL) == PRESSIONADO) {
-            if (!botao_1real) {            // início do aperto -> conta uma vez
-                botao_1real = 1;
-                valor_pago += VALOR_1REAL;
-              }
-            } else {
-            botao_1real = 0;               // soltou, pode contar de novo
-            } 
-        if (Debouncer(PINO_50CENT) == PRESSIONADO) {
-            if (!botao_50cent) {
-                botao_50cent = 1;
-                valor_pago += VALOR_50CENT;
-                }
-            } else {
-                botao_50cent = 0;
-            }
+        valor_pago += botoes_ler_moeda();
     }
-    //valor_pago = valor_pago/100; 
+    //valor_pago = valor_pago/100;
     //se quiser usar em real, mas sinceramente acho trabalho demais já que usei tudo em centavos
     return valor_pago;
 }
