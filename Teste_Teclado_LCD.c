@@ -182,7 +182,8 @@ void lcd_init(void) {
 //teste para vizualização de cartão e senha 
 //fiz um teste tendo o "*" como um ok, mas da pra fazer fixando todos os tamanhos 
 //e tb tem a posssibilidade de "#" ser um backspace (acho valido, mas ter mais problemas não seria algo que quero)
-static void Campo_Ler(char *buf, unsigned char tam, unsigned char oculto, unsigned char col, unsigned char linha) {
+//não é static porque a main usa pra ler só a senha do cartão
+void Campo_Ler(char *buf, unsigned char tam, unsigned char oculto, unsigned char col, unsigned char linha) {
     unsigned char n = 0;
     unsigned char tecla;
 

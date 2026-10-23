@@ -21,11 +21,15 @@ unsigned char Teclado_Ler(void);            // Teclado 4x3.c
 void Teclado_Ler_Placa(char *placa, unsigned char col, unsigned char linha);   // Teclado 4x3.c
 char Placa_Formato_Valido(const char *Placa);   // Comparacao_Placas.c
 char Placa_Preferencial(const char *Placa);     // Comparacao_Placas.c
+signed char Placa_Cartao_Virtual(const char *Placa);                            // Comparacao_Placas.c
+signed char Desconta_Saldo_Cartao_Virtual(unsigned char pos, int valor_cobrado); // Comparacao_Placas.c
+extern unsigned int saldo_cartao_virtual[5];   // Dados_Placas_Cartoes.c, em centavos
 void lcd_init(void);                        // Teste_Teclado_LCD.c
 void lcd_clear(void);                       // Teste_Teclado_LCD.c
 void lcd_set_cursor(unsigned char col, unsigned char linha);   // Teste_Teclado_LCD.c
 void lcd_putc(char c);                      // Teste_Teclado_LCD.c
 void lcd_print(const char *s);              // Teste_Teclado_LCD.c
+void Campo_Ler(char *buf, unsigned char tam, unsigned char oculto, unsigned char col, unsigned char linha);  // Teste_Teclado_LCD.c
 void botoes_init(void);                     // Botoes_Pagamento_Dinheiro.c
 int botoes_ler_moeda(void);                 // Botoes_Pagamento_Dinheiro.c
 void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
@@ -44,6 +48,9 @@ static char cartao_inserido[7] = "";
 
 //vira 1 quando chega a resposta 'S' 'E' do registro do estacionamento
 static unsigned char resposta_se = 0;
+
+//resposta do pagamento com cartão ('S' 'P' + 'S', 'F' ou 'I'); 0 enquanto não chegou
+static unsigned char resposta_sp = 0;
 
 //espera um byte da serial por até SERIAL_ESPERA_MS; retorna 1 se chegou
 static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
@@ -64,6 +71,7 @@ static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
      'S' 'C' "123456"                       -> guarda o cartão, responde 'P' 'C'
    e as respostas das mensagens que o Parkmicros manda:
      'S' 'E'                                -> registro do estacionamento aceito (resposta_se = 1)
+     'S' 'P' 'S'/'F'/'I'                    -> resposta do pagamento com cartão (resposta_sp)
    retorna 1 quando a data e hora mudaram (pra atualizar o LCD) */
 static unsigned char Servidor_Processar(void) {
     unsigned char tipo, n, dado;
@@ -129,6 +137,12 @@ static unsigned char Servidor_Processar(void) {
 
         case 'E':
             resposta_se = 1;        // resposta do 'P' 'E' (não precisa responder de volta)
+            return 0;
+
+        case 'P':
+            if (Serial_Esperar_Byte(&dado)) {
+                resposta_sp = dado;     // 'S' sucesso, 'F' cartão/senha errados, 'I' saldo insuficiente
+            }
             return 0;
 
         default:
@@ -343,8 +357,124 @@ static void Pagar_Dinheiro(int valor) {
     }
 }
 
+/* pagamento com cartão pelo sistema do sor:
+   o cartão é inserido pelo aplicativo ("Simula inserção" manda 'S' 'C' "123456"),
+   a senha (5 dígitos) é digitada no teclado e aparece como *****
+   manda 'P' 'P' n "123456" "12345" "250" e espera 'S' 'P' + 'S', 'F' ou 'I'
+   o n (tamanho de cartão + senha + valor = 14) não está no PDF, mas o aplicativo do professor
+   lê esse byte antes do cartão; sem ele o aplicativo nunca responde
+   retorna 1 se o pagamento foi aprovado */
+static unsigned char Pagar_Cartao(int valor) {
+    char senha[6];
+    unsigned char i;
+    unsigned int espera;
+
+    cartao_inserido[0] = '\0';
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    lcd_print("Insira o cartao");
+    lcd_set_cursor(0, 1);
+    lcd_print("#:voltar");
+    while (cartao_inserido[0] == '\0') {     // o 'S' 'C' chega pelo Servidor_Processar
+        Servidor_Processar();
+        Relogio_Atualizar();
+        if (Teclado_Ler() == '#') {
+            return 0;
+        }
+    }
+
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    lcd_print("Cartao: ");
+    lcd_print(cartao_inserido);
+    lcd_set_cursor(0, 1);
+    lcd_print("Senha: ");
+    Campo_Ler(senha, 5, 1, 7, 1);           // 5 dígitos, escondidos, * confirma
+
+    resposta_sp = 0;
+    serial_enviar('P');
+    serial_enviar('P');
+    serial_enviar(6 + 5 + 3);               // n
+    for (i = 0; i < 6; i++) {
+        serial_enviar(cartao_inserido[i]);
+    }
+    for (i = 0; i < 5; i++) {
+        serial_enviar(senha[i]);
+    }
+    serial_enviar('0' + valor / 100);       // valor em centavos com 3 dígitos: 250 -> "250"
+    serial_enviar('0' + (valor / 10) % 10);
+    serial_enviar('0' + valor % 10);
+
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    lcd_print("Processando...");
+    for (espera = 0; espera < 3000 && resposta_sp == 0; espera++) {
+        Servidor_Processar();
+        Relogio_Atualizar();
+        Delay1ms();
+    }
+
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    switch (resposta_sp) {
+        case 'S':
+            lcd_print("Pagamento");
+            lcd_set_cursor(0, 1);
+            lcd_print("aprovado!");
+            break;
+        case 'F':
+            lcd_print("Cartao ou senha");
+            lcd_set_cursor(0, 1);
+            lcd_print("incorretos");
+            break;
+        case 'I':
+            lcd_print("Saldo");
+            lcd_set_cursor(0, 1);
+            lcd_print("insuficiente");
+            break;
+        default:
+            lcd_print("Sistema nao");
+            lcd_set_cursor(0, 1);
+            lcd_print("respondeu");
+            break;
+    }
+    Esperar_Ms(2500);
+    return resposta_sp == 'S';
+}
+
+//pagamento com cartão azul: o saldo fica no Arduino, vinculado à placa (Dados_Placas_Cartoes.c)
+//retorna 1 se descontou
+static unsigned char Pagar_Cartao_Azul(const char *placa, int valor) {
+    signed char pos = Placa_Cartao_Virtual(placa);
+    signed char resultado = 0;
+
+    if (pos >= 0) {
+        resultado = Desconta_Saldo_Cartao_Virtual(pos, valor);
+    }
+
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    if (resultado == 1) {
+        lcd_print("Pago! Saldo:");
+        lcd_set_cursor(0, 1);
+        lcd_reais(saldo_cartao_virtual[(unsigned char)pos]);
+    } else if (resultado == -1) {
+        //Lcd "Saldo Insuficiente"
+        lcd_print("Saldo");
+        lcd_set_cursor(0, 1);
+        lcd_print("insuficiente");
+    } else {
+        lcd_print("Placa sem");
+        lcd_set_cursor(0, 1);
+        lcd_print("cartao azul");
+    }
+    Esperar_Ms(2500);
+    return resultado == 1;
+}
+
 int main (void){
 unsigned char tecla, estado, tempo, data, pagamento;
+unsigned char pago;       // 1 quando o pagamento deu certo
 unsigned char Pss_preferencial = 0;
 unsigned char cobranca;    // linha da tabela de preços (COBRA_...)
 int valor;                // em centavos
@@ -446,42 +576,46 @@ while(1){
 
     //Lcd "Forma de pagamento:"
     // "1) Dinheiro     2)Cartão    3)Cartão Azul"
-    //por enquanto só o dinheiro está pronto, então só aceita a tecla 1
-    lcd_clear();
-    lcd_set_cursor(0, 0);
-    lcd_print("Pagamento:");
-    lcd_set_cursor(0, 1);
-    lcd_print("1:Dinheiro");
-    do {
-        pagamento = Esperar_Tecla() - '0';
-    } while (pagamento != 1);
+    //o cartão azul só aparece se a placa tiver um; se o pagamento falhar, volta pra cá
+    pago = 0;
+    while (!pago) {
+        lcd_clear();
+        lcd_set_cursor(0, 0);
+        lcd_print("1:Din 2:Cartao");
+        if (Placa_Cartao_Virtual(placa) >= 0) {
+            lcd_set_cursor(0, 1);
+            lcd_print("3:Cartao azul");
+        }
+        do {
+            pagamento = Esperar_Tecla() - '0';
+        } while (pagamento < 1 || pagamento > 3 || (pagamento == 3 && Placa_Cartao_Virtual(placa) < 0));
 
-    switch(pagamento){
-        case 1: 
-            //pagamento em dinheiro 
-            //lcd "Insira o dinheiro:"
-            //ler do sensor (o sensor virou os botões das moedas)
-            Pagar_Dinheiro(valor);          // só volta quando o valor exato entrou
-            lcd_clear();
-            lcd_set_cursor(0, 0);
-            lcd_print("Pago!");
-            Esperar_Ms(3000);
-            break; 
-        case 2: 
-            //pagamento em cartão, sistema do sor 
-            //lcd "Numéro do cartão:"
-            //lcd "Senha: ", os numeros não aparecem na tela
-            //Enviar dados para o sor
-            break; 
-        case 3:
-            //pagamento em cartão azul 
-            //verifica se a placa está vinculada
-            //fazer desconto do valor 
-            break; 
-        default:
-            //lcd "Essa estrada não é válida."
-            //fechar o sistema??
-            break;
+        switch(pagamento){
+            case 1: 
+                //pagamento em dinheiro 
+                //lcd "Insira o dinheiro:"
+                //ler do sensor (o sensor virou os botões das moedas)
+                Pagar_Dinheiro(valor);          // só volta quando o valor exato entrou
+                lcd_clear();
+                lcd_set_cursor(0, 0);
+                lcd_print("Pago!");
+                Esperar_Ms(3000);
+                pago = 1;
+                break; 
+            case 2: 
+                //pagamento em cartão, sistema do sor 
+                //lcd "Numéro do cartão:" (o cartão vem do aplicativo, "Simula inserção")
+                //lcd "Senha: ", os numeros não aparecem na tela
+                //Enviar dados para o sor
+                pago = Pagar_Cartao(valor);
+                break; 
+            case 3:
+                //pagamento em cartão azul 
+                //verifica se a placa está vinculada
+                //fazer desconto do valor 
+                pago = Pagar_Cartao_Azul(placa, valor);
+                break; 
+        }
     }
 
     //lcd "Pagamento finalizado!"

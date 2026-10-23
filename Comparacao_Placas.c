@@ -13,7 +13,7 @@
 extern char lista_placas_especiais[QTD_PLACAS][TAM_PLACA + 1];
 extern char lista_cartao_virtual[QTD_PLACAS][TAM_PLACA + 1];
 //como o valor muda, ele fica fora da função e usei QTD_PLACAS pq o numero é igual
-extern unsigned char saldo_cartao_virtual[QTD_PLACAS];
+extern unsigned int saldo_cartao_virtual[QTD_PLACAS];     // em centavos
 
 static char eh_letra(char c)  { return c >= 'A' && c <= 'Z'; }
 static char eh_numero(char c) { return c >= '0' && c <= '9'; }
@@ -57,12 +57,12 @@ signed char Placa_Cartao_Virtual (const char *Placa)
 
 signed char Desconta_Saldo_Cartao_Virtual(unsigned char pos, int valor_cobrado)
 {
-	valor_cobrado = valor_cobrado/100; 	//passar de centavos para real 
+	//o saldo também é em centavos, então desconta o valor exato (antes cortava os centavos)
 	
 	if (pos >= QTD_PLACAS){
 		return 0; 	//caso não exista esse valor, só pra garantir
 	}
-	if (saldo_cartao_virtual[pos] < valor_cobrado){
+	if (valor_cobrado < 0 || saldo_cartao_virtual[pos] < (unsigned int)valor_cobrado){
 		return -1; 	//caso o saldo não seja o suficiente 
 	}
 	saldo_cartao_virtual[pos] -= valor_cobrado;

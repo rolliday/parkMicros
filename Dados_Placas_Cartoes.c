@@ -18,9 +18,10 @@ char lista_cartao_virtual[5][8] = {
 	"VIR7960",
 	"PAR8320" };
 
-unsigned char saldo_cartao_virtual[5] = {
-	50,
-	20,
-	30,
-	60,
-	20 };
+//saldo em centavos, igual aos valores cobrados (5000 = R$ 50,00)
+unsigned int saldo_cartao_virtual[5] = {
+	5000,
+	2000,
+	3000,
+	6000,
+	2000 };
