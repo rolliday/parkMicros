@@ -6,6 +6,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <string.h>
+#include <stdbool.h>        // bool (o verificar_data_bloqueada do calendario.c devolve bool)
 #include "serial.h"         // recepção e envio pela serial (só a main inclui, tem a interrupção)
 
 #define SEM_TECLA   0x00    // tem que ser o mesmo valor do Teclado 4x3.c
@@ -32,12 +33,15 @@ void lcd_print(const char *s);              // Teste_Teclado_LCD.c
 void Campo_Ler(char *buf, unsigned char tam, unsigned char oculto, unsigned char col, unsigned char linha);  // Teste_Teclado_LCD.c
 void botoes_init(void);                     // Botoes_Pagamento_Dinheiro.c
 int botoes_ler_moeda(void);                 // Botoes_Pagamento_Dinheiro.c
+void LED_Alerta_Ligar(void);                // LED_Alerta.c (Timer1)
 void LED_Alerta_Desligar(void);             // LED_Alerta.c (Timer1)
 void LED_Alerta_Iniciar(void);              // LED_Alerta.c (Timer1)
 unsigned int Relogio_Meios_Segundos(void);  // LED_Alerta.c (Timer1)
 unsigned char Calendario_Flag(unsigned char dia, unsigned char mes, unsigned int ano);   // calendario.c
 unsigned char Dias_Do_Mes(unsigned char mes, unsigned int ano);                          // calendario.c
 bool verificar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a);                         // calendario.c 
+bool adicionar_feriado_extra(uint8_t d, uint8_t m);                                      // calendario.c
+bool adicionar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a);                         // calendario.c
 
 //data e hora: acertadas pelo sistema do professor ('S' 'H') e depois contadas pelo próprio Arduino
 static unsigned char dia, mes, hora, minuto, segundo;
@@ -561,6 +565,18 @@ static unsigned char Pagar_Cartao_Azul(const char *placa, int valor) {
     Esperar_Ms(2500);
     return resultado == 1;
 }
+
+//menu do administrador: usa as variáveis e funções daqui de cima (dia, hora, Esperar_Tecla...),
+//por isso é incluído aqui e NÃO entra como Compile no projeto do Studio (senão compila duas vezes)
+#include "AdmParkc.c"
+
+/* ---------- TEMPORÁRIO: só pra compilar enquanto a contagem do tempo não existe ----------
+   retorna 1 quando o tempo pago (+ 3 min de tolerância) estourou; por enquanto sempre 0,
+   então o LED fica apagado */
+static unsigned char Contagem_Tempo_estacionado(void) {
+    return 0;
+}
+/* ------------------------------------------------------------------------------------------ */
 
 int main (void){
 unsigned char tecla, estado, tempo, data, pagamento, atraso;

@@ -33,7 +33,7 @@ static void ADMPARK () {
     basicamente não sei nadaaa skssks
       */
     switch (adm){
-      case 0: 
+      case 0: { // trocar data e hora
         // puramente ia, nem sei o que ta acontecendo sssjs
         char buf_dh[13];
         lcd_clear();
@@ -73,6 +73,7 @@ static void ADMPARK () {
             Esperar_Ms(1500);
         }
         break; 
+      }
       case 1: 
         lcd_clear();
         lcd_set_cursor(0, 0);
