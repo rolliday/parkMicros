@@ -127,6 +127,17 @@ static uint16_t dia_do_ano(uint8_t dia, uint8_t mes) {
   return a;
 }
 
+// quantos dias passaram desde 01/01/2000 (01/01/2000 = 0); a main usa pra contar o tempo
+// estacionado mesmo quando vira o dia (so eh valido para anos entre 2000 e 2099)
+uint16_t Dias_Desde_2000(uint8_t dia, uint8_t mes, uint16_t ano) {
+  uint16_t dias = (uint16_t)(ano - 2000) * 365u + quantos_bissextos(ano) + dia_do_ano(dia, mes) - 1;
+
+  if (bissexto(ano) && mes > 2) {
+    dias++;   // o 29/02 desse ano ja passou
+  }
+  return dias;
+}
+
 static Feriado_dia_mes calculo_carnaval(uint16_t dia_do_ano_pascoa, bool flag_bissexto) {
   Feriado_dia_mes res;
   res.mes = 0;

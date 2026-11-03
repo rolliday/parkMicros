@@ -42,6 +42,7 @@ unsigned char Dias_Do_Mes(unsigned char mes, unsigned int ano);                 
 bool verificar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a);                         // calendario.c 
 bool adicionar_feriado_extra(uint8_t d, uint8_t m);                                      // calendario.c
 bool adicionar_data_bloqueada(uint8_t d, uint8_t m, uint16_t a);                         // calendario.c
+unsigned int Dias_Desde_2000(unsigned char dia, unsigned char mes, unsigned int ano);    // calendario.c
 
 //data e hora: acertadas pelo sistema do professor ('S' 'H') e depois contadas pelo próprio Arduino
 static unsigned char dia, mes, hora, minuto, segundo;
@@ -61,8 +62,37 @@ static unsigned char resposta_sp = 0;
 //vira 1 quando chega a resposta 'S' 'I' do comprovante
 static unsigned char resposta_si = 0;
 
-//
-static char dados_ocorrencia[40] = "Nenhuma ocorrencia";
+//carros que pagaram e podem ficar em atraso (idoso/pcd e grátis não entram)
+#define MAX_CARROS       10
+#define TOLERANCIA_MIN   3      // minutos depois do limite antes de contar como atraso
+#define RUA_DESCONHECIDA 0xFF   // o carro ainda não apareceu em nenhum 'Avalia rua'
+
+typedef struct {
+    char placa[8];              // placa[0] == '\0' = lugar vazio na lista
+    unsigned long limite;       // até quando está pago, em minutos desde 01/01/2000 (funciona virando o dia)
+    unsigned char cobranca;     // linha da tabela de preços, pra saber o valor de mais 30 min
+    unsigned char azul;         // 1 = pagou com cartão azul (renova sozinho a cada atraso)
+    unsigned char rua;          // posição em nome_rua, ou RUA_DESCONHECIDA
+    unsigned char atrasado;     // 1 = passou do limite + tolerância
+} Carro;
+
+static Carro carros[MAX_CARROS];
+
+//nomes das ruas como chegam no 'S' 'V' do sistema do sor (7 letras)
+static const char nome_rua[3][8] = { "OSVALDO", "SARMENT", "JPESSOA" };
+
+//LED aceso (piscando) enquanto tiver algum carro em atraso na lista
+static void Atualizar_LED(void) {
+    unsigned char c;
+
+    for (c = 0; c < MAX_CARROS; c++) {
+        if (carros[c].placa[0] != '\0' && carros[c].atrasado) {
+            LED_Alerta_Ligar();
+            return;
+        }
+    }
+    LED_Alerta_Desligar();
+}
 
 //espera um byte da serial por até SERIAL_ESPERA_MS; retorna 1 se chegou
 static unsigned char Serial_Esperar_Byte(unsigned char *dado) {
@@ -123,18 +153,55 @@ static unsigned char Servidor_Processar(void) {
             serial_enviar('H');
             return 1;
 
-       case 'V':
+        case 'V':
+            //condição da via ('Avalia rua' no aplicativo): n + rua (7 letras) + 7 letras por carro presente
+            //serve pra saber em que rua está cada carro da lista e quem já foi embora
             if (!Serial_Esperar_Byte(&n)) {
                 return 0;
             }
-           {
-                unsigned char i;
-                for (i = 0; i < n && i < sizeof(dados_ocorrencia) - 1; i++) {
-                    if (!Serial_Esperar_Byte((unsigned char*)&dados_ocorrencia[i])){ 
+            {
+                char texto[8];
+                unsigned char rua = RUA_DESCONHECIDA;
+                unsigned char primeiro = 1;         // os 7 primeiros são o nome da rua
+                unsigned int presentes = 0;         // um bit por carro da lista que apareceu
+                unsigned char i = 0, c;
+
+                for (; n > 0; n--) {               // lê tudo, mesmo que venham muitos carros
+                    if (!Serial_Esperar_Byte(&dado)) {
                         return 0;
                     }
+                    texto[i++] = dado;
+                    if (i < 7) {
+                        continue;
+                    }
+                    texto[7] = '\0';
+                    i = 0;
+                    if (primeiro) {
+                        primeiro = 0;
+                        for (c = 0; c < 3; c++) {
+                            if (strncmp(texto, nome_rua[c], 7) == 0) {
+                                rua = c;
+                            }
+                        }
+                    } else {
+                        for (c = 0; c < MAX_CARROS; c++) {
+                            if (carros[c].placa[0] != '\0' && strncmp(texto, carros[c].placa, 7) == 0) {
+                                presentes |= 1u << c;
+                                carros[c].rua = rua;
+                            }
+                        }
+                    }
                 }
-                dados_ocorrencia[i] = '\0';
+
+                //carro que era dessa rua e não está mais na lista: foi embora (sai da lista e o atraso some)
+                if (rua != RUA_DESCONHECIDA) {
+                    for (c = 0; c < MAX_CARROS; c++) {
+                        if (carros[c].placa[0] != '\0' && carros[c].rua == rua && !(presentes & (1u << c))) {
+                            carros[c].placa[0] = '\0';
+                        }
+                    }
+                    Atualizar_LED();
+                }
             }
             serial_enviar('P');
             serial_enviar('V');
@@ -566,20 +633,89 @@ static unsigned char Pagar_Cartao_Azul(const char *placa, int valor) {
     return resultado == 1;
 }
 
-//menu do administrador: usa as variáveis e funções daqui de cima (dia, hora, Esperar_Tecla...),
+//agora, em minutos desde 01/01/2000 (o limite de cada carro usa a mesma conta)
+static unsigned long Agora_Minutos(void) {
+    return (unsigned long)Dias_Desde_2000(dia, mes, ano) * 1440UL + hora * 60u + minuto;
+}
+
+//guarda o carro na lista depois de pago, com o limite = agora + tempo pago
+//pagar de novo a mesma placa substitui o registro antigo (e tira o atraso)
+static void Carro_Registrar(const char *placa, unsigned char modalidade, unsigned char cobranca, unsigned char azul) {
+    unsigned char c, rua = RUA_DESCONHECIDA;
+    signed char lugar = -1;
+
+    for (c = 0; c < MAX_CARROS && lugar < 0; c++) {       // a mesma placa já está na lista?
+        if (carros[c].placa[0] != '\0' && strncmp(carros[c].placa, placa, 7) == 0) {
+            lugar = c;
+            rua = carros[c].rua;                // continua na mesma rua
+        }
+    }
+    for (c = 0; c < MAX_CARROS && lugar < 0; c++) {       // senão, um lugar vazio
+        if (carros[c].placa[0] == '\0') {
+            lugar = c;
+        }
+    }
+    if (lugar < 0) {                                      // lista cheia: usa o do limite mais antigo
+        lugar = 0;
+        for (c = 1; c < MAX_CARROS; c++) {
+            if (carros[c].limite < carros[(unsigned char)lugar].limite) {
+                lugar = c;
+            }
+        }
+    }
+
+    strncpy(carros[(unsigned char)lugar].placa, placa, 7);
+    carros[(unsigned char)lugar].placa[7] = '\0';
+    carros[(unsigned char)lugar].limite = Agora_Minutos() + minutos_tempo[modalidade];
+    carros[(unsigned char)lugar].cobranca = cobranca;
+    carros[(unsigned char)lugar].azul = azul;
+    carros[(unsigned char)lugar].rua = rua;
+    carros[(unsigned char)lugar].atrasado = 0;
+    Atualizar_LED();
+}
+
+/* confere o tempo de todos os carros da lista, uma vez por minuto (chamada na tela de inatividade):
+   passou do limite + 3 min de tolerância -> atraso (o LED pisca)
+   quem pagou com cartão azul renova sozinho: desconta o valor de mais 30 min e empurra o limite;
+   se não tiver saldo, vira atraso normal */
+static void Verificar_Atrasos(void) {
+    static unsigned long ultima_vez = 0;
+    unsigned long agora;
+    unsigned char c;
+
+    if (!hora_recebida) {
+        return;
+    }
+    agora = Agora_Minutos();
+    if (agora == ultima_vez) {
+        return;                                 // esse minuto já foi conferido
+    }
+    ultima_vez = agora;
+
+    for (c = 0; c < MAX_CARROS; c++) {
+        if (carros[c].placa[0] == '\0' || carros[c].atrasado) {
+            continue;
+        }
+        while (agora >= carros[c].limite + TOLERANCIA_MIN) {
+            if (carros[c].azul &&
+                Desconta_Saldo_Cartao_Virtual(Placa_Cartao_Virtual(carros[c].placa),
+                                              Calcular_Valor(carros[c].cobranca, 0)) == 1) {
+                carros[c].limite += 30;         // cartão azul: mais 30 min pagos
+            } else {
+                carros[c].atrasado = 1;
+                break;
+            }
+        }
+    }
+    Atualizar_LED();
+}
+
+//menu do administrador: usa as variáveis e funções daqui de cima (dia, hora, Esperar_Tecla, carros...),
 //por isso é incluído aqui e NÃO entra como Compile no projeto do Studio (senão compila duas vezes)
 #include "AdmParkc.c"
 
-/* ---------- TEMPORÁRIO: só pra compilar enquanto a contagem do tempo não existe ----------
-   retorna 1 quando o tempo pago (+ 3 min de tolerância) estourou; por enquanto sempre 0,
-   então o LED fica apagado */
-static unsigned char Contagem_Tempo_estacionado(void) {
-    return 0;
-}
-/* ------------------------------------------------------------------------------------------ */
-
 int main (void){
-unsigned char tecla, estado, tempo, data, pagamento, atraso;
+unsigned char tecla, estado, tempo, data, pagamento;
 unsigned char pago;       // 1 quando o pagamento deu certo
 unsigned char Pss_preferencial = 0;
 unsigned char cobranca;    // linha da tabela de preços (COBRA_...)
@@ -607,6 +743,7 @@ while(1){
         if (Relogio_Atualizar()) {
             atualizar = 1;      // virou o minuto
         }
+        Verificar_Atrasos();    // tempo estacionado de cada carro, LED e cartão azul
         if (atualizar) {
             Mostrar_Data_Hora();
         }
@@ -726,37 +863,11 @@ while(1){
     Registrar_Estacionamento(placa, tempo);
     Imprimir_Comprovante(placa, tempo, valor, pagamento);
 
-    // eu não sei como fazer a parte de contagem de tempo ... 
-    // mas eu pensei em ser algo que conte e retorne uma flag, pra assim acionar uma condicional 
-    atraso = 0; 
-    atraso = Contagem_Tempo_estacionado(); //só a ideia e retorna 1 se o tempo estourou 
-    
-    if (atraso == 1) {
-        if (Pss_preferencial == 1) {
-            atraso = 0; // preferencial nao tem limite 
-            LED_Alerta_Desligar(); // garante que o led fica apagado
-        } 
-        else if (pagamento == 3) {
-            // tenta a extensão automática 
-            pago = Pagar_Cartao_Azul(placa, Calcular_Valor(cobranca, 0)); 
-            
-            if (pago == 1) {
-                atraso = 0; // tempo estendido 
-                LED_Alerta_Desligar(); // garante o led desligado 
-            } else {
-                // Cartão azul sem saldo suficiente 
-                LED_Alerta_Ligar(); 
-            }
-        } 
-        else {
-            // condições sem renovação automática 
-            LED_Alerta_Ligar(); 
-        }
-    } else {
-        LED_Alerta_Desligar();
+    //inicio da contagem do tempo: o carro entra na lista e o Verificar_Atrasos confere a cada minuto
+    //(tolerância de 3 min, LED pisca, cartão azul renova sozinho)
+    //preferencial não tem limite e o ilimitado nunca atrasa, então não entram na lista
+    if (!Pss_preferencial && tempo < 4) {
+        Carro_Registrar(placa, tempo, cobranca, pagamento == 3);
     }
-    //inicio da contagem do tempo, não sei como fazer isso ainda 
-    //tolerância de 3 mins
-    //Led pisca 
 }
 }

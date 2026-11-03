@@ -48,7 +48,7 @@ Comunicação serial com o aplicativo do professor.
 - **Cartão azul:** vinculado à placa, debitado diretamente no sistema interno; se não houver saldo, avisar o usuário
 
 ## Funções do Administrador
-Código de acesso: `ADMPARK - 123445`
+Código de acesso: `ADMPARK - 12345`
 
 - Troca de horário do sistema
 - Acesso à placa e rua do carro inadimplente

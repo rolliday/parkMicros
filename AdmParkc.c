@@ -74,15 +74,32 @@ static void ADMPARK () {
         }
         break; 
       }
-      case 1: 
-        lcd_clear();
-        lcd_set_cursor(0, 0);
-        lcd_print("Ocorrencia :");
-        lcd_set_cursor(0, 1);
-        lcd_print(dados_ocorrencia);
-        //saida de ia, tentei adaptar ....
-        //cuidar que eu mexi no teu servidor processar, se der errado é uma modificação no caso V 
+      case 1: { // inadimplentes: placa e rua de cada carro em atraso, 3 s cada
+        unsigned char c, achou = 0;
+        for (c = 0; c < MAX_CARROS; c++) {
+            if (carros[c].placa[0] == '\0' || !carros[c].atrasado) {
+                continue;
+            }
+            achou = 1;
+            lcd_clear();
+            lcd_set_cursor(0, 0);
+            lcd_print("Inad: ");
+            lcd_print(carros[c].placa);
+            lcd_set_cursor(0, 1);
+            lcd_print("Rua: ");
+            lcd_print(carros[c].rua == RUA_DESCONHECIDA ? "?" : nome_rua[carros[c].rua]);
+            Esperar_Ms(3000);
+        }
+        if (!achou) {
+            lcd_clear();
+            lcd_set_cursor(0, 0);
+            lcd_print("Nenhuma");
+            lcd_set_cursor(0, 1);
+            lcd_print("ocorrencia");
+            Esperar_Ms(2000);
+        }
         break; 
+      }
       case 2: { // Adicionar feriados especiais 
         char buf_fer[5];
         lcd_clear();
