@@ -787,9 +787,9 @@ while(1){
     Pss_preferencial = Placa_Preferencial(placa);   // 1 se idosa ou pcd
 
     //Calendário 
-    /*  1 - Dia de semana 
-        2 - sabado 
-        - domingos/feriados*/
+    /*  0 - domingos/feriados
+        1 - Dia de semana 
+        2 - sabado */
     
     Relogio_Atualizar();    // a data tem que estar em dia antes de ver o tipo de dia
     data = Calendario_Flag(dia, mes, ano); 
