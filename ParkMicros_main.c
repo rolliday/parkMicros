@@ -786,20 +786,20 @@ while(1){
     
     Pss_preferencial = Placa_Preferencial(placa);   // 1 se idosa ou pcd
 
-    //Calendário
-    //Eu olhei tua função calendario, GIGANTESCA, mas minha ideia final ela virar uma flag 
+    //Calendário 
     /*  1 - Dia de semana 
         2 - sabado 
-        default - domingos/feriados
-    */
+        - domingos/feriados*/
+    
     Relogio_Atualizar();    // a data tem que estar em dia antes de ver o tipo de dia
-    data = Calendario_Flag(dia, mes, ano); //nome só pra referencia
+    data = Calendario_Flag(dia, mes, ano); 
     cobranca = Tipo_Cobranca(data, Pss_preferencial);
 
    //lcd "Quanto tempo:"
    // "0) 30 mins   1) 1h   2) 1h30    3)2h"
    //usei os valores baseados no valor de byte enviado para o professor 
    //4 = ilimitado, só pra idoso/pcd e quando é grátis (o resto tem limite de 2h)
+    
     lcd_clear();
     lcd_set_cursor(0, 0);
     lcd_print("0:30 1:1h 2:1h30");
@@ -816,7 +816,7 @@ while(1){
     } while (tecla < '0' || tecla > '4' || Calcular_Valor(cobranca, tempo) == SEM_OPCAO);   // ignora o que não é opção
 
     //o valor fica em centavos, igual ao que vai pro sistema do sor (2,50 -> 250)
-    //a tabela substituiu os switch de antes (um switch por dia e por tempo)
+   
     valor = Calcular_Valor(cobranca, tempo);
     Mostrar_Valor(valor);
     while (Esperar_Tecla() != '*');      // * confirma
@@ -859,7 +859,6 @@ while(1){
         }
     }
 
-    //lcd "Pagamento finalizado!"
     Registrar_Estacionamento(placa, tempo);
     Imprimir_Comprovante(placa, tempo, valor, pagamento);
 
