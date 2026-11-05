@@ -1,4 +1,4 @@
-//triste em jogar meu Sensor_LDR fora ...
+//Substituindo o Sensor_LDR 
 
 #ifndef F_CPU
 #define F_CPU 16000000UL    // tem que vir antes do <util/delay.h>, senão o _delay_ms conta errado
@@ -65,7 +65,6 @@ int botoes_pagamento_em_dinheiro(int valor_a_pagar)
     while (valor_pago < valor_a_pagar){
         valor_pago += botoes_ler_moeda();
     }
-    //valor_pago = valor_pago/100;
-    //se quiser usar em real, mas sinceramente acho trabalho demais já que usei tudo em centavos
+    
     return valor_pago;
 }
