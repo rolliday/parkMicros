@@ -1,5 +1,4 @@
-//pra tentar organizar minhas ideias 
-//preferi colocar aq só pra não sair desarrumando tudo na main 
+//função AdmPark 
 
 #define TAM_SENHA 5 
 
@@ -20,21 +19,15 @@ static void ADMPARK () {
     lcd_set_cursor(0, 0);
     lcd_print("0:D/H 1:Inad");
     lcd_set_cursor(0, 1);
-    lcd_print("2:Fer 3:Bloq"); //essas coisa me parecem grande demais... 
+    lcd_print("2:Fer 3:Bloq"); 
     
     do {
         tecla = Esperar_Tecla();
         adm = tecla - '0';    
     } while (tecla < '0' || tecla > '3'); 
 
-    /* assumo que não sei como fazer essas funções, eu pensei em fazer uma lista para feriados adicionados aq e datas de bloquei,
-    mas não sei como integrar isso ao código de calendario... pedi pra ia ajudar sksksk
-    data e hora eu tb não sei como modificar 
-    basicamente não sei nadaaa skssks
-      */
     switch (adm){
       case 0: { // trocar data e hora
-        // puramente ia, nem sei o que ta acontecendo sssjs
         char buf_dh[13];
         lcd_clear();
         lcd_set_cursor(0, 0);
